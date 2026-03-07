@@ -41,14 +41,10 @@ void FIR::FilterSamplesInterleaved(float *samples, uint32_t size, uint32_t chann
     }
 
     if (this->coeffsSize > 1) {
-        float *pfVar1 = this->block.data();
-        float *pfVar6 = pfVar1 + this->blockLength;
-        float *pfVar2 = this->offsetBlock.data() + this->coeffsSize;
-        do {
-            pfVar6 = pfVar6 - 1;
-            pfVar2[-2] = *pfVar6;
-            pfVar2 = pfVar2 - 1;
-        } while (pfVar6 != pfVar1 + this->blockLength + 1 - this->coeffsSize);
+        uint32_t carryCount = this->coeffsSize - 1;
+        for (uint32_t i = 0; i < carryCount; i++) {
+            this->offsetBlock[i] = this->block[this->blockLength - carryCount + i];
+        }
     }
 }
 
