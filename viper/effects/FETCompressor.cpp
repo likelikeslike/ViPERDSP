@@ -26,6 +26,13 @@ static double calculate_exp_something(double param_1, double param_2) {
     return 1.0 - exp(-1.0 / (param_2 * param_1));
 }
 
+static double calculate_time_coeff(
+    double samplingRate, double value, double scale, double offset
+) {
+    double time = exp(value * scale + offset);
+    return time <= 0.0 ? 1.0 : calculate_exp_something(samplingRate, time);
+}
+
 FETCompressor::FETCompressor() {
     this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
 
@@ -74,13 +81,7 @@ void FETCompressor::Process(float *samples, uint32_t size) {
     for (uint32_t i = 0; i < size * 2; i += 2) {
         double inL = abs(samples[i]);
         double inR = abs(samples[i + 1]);
-
-        double in;
-        if (inL > inR) {
-            in = inL;
-        } else {
-            in = inR;
-        }
+        double in = std::fmax(inL, inR);
 
         double out = ProcessSidechain(in);
         if (this->enable) {
@@ -262,14 +263,9 @@ void FETCompressor::SetParameter(FETCompressor::Parameter parameter, float value
             break;
         }
         case ATTACK: {
-            double tmp = exp(value * 7.600903 - 9.21034);
-            this->attack1 = tmp;
-            if (tmp <= 0.0) {
-                tmp = 1.0;
-            } else {
-                tmp = calculate_exp_something(this->samplingRate, tmp);
-            }
-            this->attack2 = tmp;
+            this->attack1 = exp(value * 7.600903 - 9.21034);
+            this->attack2 =
+                calculate_time_coeff(this->samplingRate, value, 7.600903, -9.21034);
             break;
         }
         case AUTO_ATTACK: {
@@ -277,14 +273,9 @@ void FETCompressor::SetParameter(FETCompressor::Parameter parameter, float value
             break;
         }
         case RELEASE: {
-            double tmp = exp(value * 5.991465 - 5.298317);
-            this->release1 = tmp;
-            if (tmp <= 0.0) {
-                tmp = 1.0;
-            } else {
-                tmp = calculate_exp_something(this->samplingRate, tmp);
-            }
-            this->release2 = tmp;
+            this->release1 = exp(value * 5.991465 - 5.298317);
+            this->release2 =
+                calculate_time_coeff(this->samplingRate, value, 5.991465, -5.298317);
             break;
         }
         case AUTO_RELEASE: {
@@ -304,25 +295,14 @@ void FETCompressor::SetParameter(FETCompressor::Parameter parameter, float value
             break;
         }
         case CREST: {
-            double tmp = exp(value * 5.991465 - 5.298317);
-            this->crest1 = tmp;
-            if (tmp <= 0.0) {
-                tmp = 1.0;
-            } else {
-                tmp = calculate_exp_something(this->samplingRate, tmp);
-            }
-            this->crest2 = tmp;
+            this->crest1 = exp(value * 5.991465 - 5.298317);
+            this->crest2 =
+                calculate_time_coeff(this->samplingRate, value, 5.991465, -5.298317);
             break;
         }
         case ADAPT: {
-            double tmp = exp(value * 1.386294);
-            this->adapt1 = tmp;
-            if (tmp <= 0.0) {
-                tmp = 1.0;
-            } else {
-                tmp = calculate_exp_something(this->samplingRate, tmp);
-            }
-            this->adapt2 = tmp;
+            this->adapt1 = exp(value * 1.386294);
+            this->adapt2 = calculate_time_coeff(this->samplingRate, value, 1.386294, 0.0);
             break;
         }
         case NO_CLIP: {

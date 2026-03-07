@@ -29,12 +29,7 @@ double PlaybackGain::AnalyseWave(float *samples, uint32_t size) {
         tmpR += tmpR2 * tmpR2;
     }
 
-    double tmp;
-    if (tmpL > tmpR) {
-        tmp = tmpL;
-    } else {
-        tmp = tmpR;
-    }
+    double tmp = std::fmax(tmpL, tmpR);
 
     return tmp / (double) size;
 }

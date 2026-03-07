@@ -27,11 +27,6 @@ Convolver::~Convolver() {
 
 static uint32_t calculate_crc32(const uint8_t *data, uint32_t length) {
     static const uint32_t crc_table[256] = {
-        // Precomputed CRC32 table
-        // This is used to speed up the CRC32 calculation
-        // Instead of computing the CRC32 from scratch each time,
-        // we can use this table to lookup the CRC32 for each byte
-        // in the input data.
         0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
         0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
         0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
@@ -78,38 +73,26 @@ static uint32_t calculate_crc32(const uint8_t *data, uint32_t length) {
     };
 
     uint32_t crc = 0xffffffff;
-
     for (uint32_t i = 0; i < length; ++i) {
         crc = crc_table[(crc ^ data[i]) & 0xff] ^ (crc >> 8);
     }
     return ~crc;
 }
 
+void Convolver::ClearKernelBuffer() {
+    delete[] this->kernelBuffer;
+    this->kernelBuffer = nullptr;
+    this->expectedSize = 0;
+    this->currentSize = 0;
+    this->channelCount = 0;
+}
+
 void Convolver::CommitKernelBuffer(
     uint32_t param_1, uint32_t param_2, uint32_t kernelId
 ) {
-    if (this->kernelBuffer == nullptr) {
-        this->expectedSize = 0;
-        this->currentSize = 0;
-        this->channelCount = 0;
-        return;
-    }
-
-    if (this->expectedSize != param_1) {
-        delete[] this->kernelBuffer;
-        this->kernelBuffer = nullptr;
-        this->expectedSize = 0;
-        this->currentSize = 0;
-        this->channelCount = 0;
-        return;
-    }
-
-    if (this->currentSize == 0) {
-        delete[] this->kernelBuffer;
-        this->kernelBuffer = nullptr;
-        this->expectedSize = 0;
-        this->currentSize = 0;
-        this->channelCount = 0;
+    if (this->kernelBuffer == nullptr || this->expectedSize != param_1
+        || this->currentSize == 0) {
+        ClearKernelBuffer();
         return;
     }
 
@@ -117,86 +100,52 @@ void Convolver::CommitKernelBuffer(
         calculate_crc32((uint8_t *) this->kernelBuffer, this->currentSize * 4);
     if (this->channelCount - 1 > 1 || calculatedCrc != param_2
         || calculatedCrc == this->currentKernelBufferCrc) {
-        delete[] this->kernelBuffer;
-        this->kernelBuffer = nullptr;
-        this->expectedSize = 0;
-        this->currentSize = 0;
-        this->channelCount = 0;
+        ClearKernelBuffer();
         return;
     }
 
     this->currentKernelBufferCrc = calculatedCrc;
 
+    uint32_t framesPerChannel = this->currentSize / this->channelCount;
+    bool loadOk;
+
     if (this->channelCount == 1) {
-        int ret1 = this->kernelCh1.LoadKernel(
-            this->kernelBuffer, this->currentSize / this->channelCount, 0x1000
-        );
-        int ret2 = this->kernelCh2.LoadKernel(
-            this->kernelBuffer, this->currentSize / this->channelCount, 0x1000
-        );
-        if (ret1 == 0 || ret2 == 0) {
-            this->kernelCh1.UnloadKernel();
-            this->kernelCh2.UnloadKernel();
-            this->currentKernelBufferCrc = 0;
-            this->kernelId = 0;
-            delete[] this->kernelBuffer;
-            this->kernelBuffer = nullptr;
-            this->expectedSize = 0;
-            this->currentSize = 0;
-            this->channelCount = 0;
-            Reset();
-            return;
-        }
-
-        memset(this->kernelFilePath, 0, sizeof(this->kernelFilePath));
-        this->kernelId = kernelId;
-        delete[] this->kernelBuffer;
-        this->kernelBuffer = nullptr;
-        this->expectedSize = 0;
-        this->currentSize = 0;
-        this->channelCount = 0;
-        Reset();
+        int ret1 =
+            this->kernelCh1.LoadKernel(this->kernelBuffer, framesPerChannel, 0x1000);
+        int ret2 =
+            this->kernelCh2.LoadKernel(this->kernelBuffer, framesPerChannel, 0x1000);
+        loadOk = (ret1 != 0 && ret2 != 0);
     } else {
-        float *newArray1 = new float[this->currentSize / this->channelCount];
-        float *newArray2 = new float[this->currentSize / this->channelCount];
+        float *ch1 = new float[framesPerChannel];
+        float *ch2 = new float[framesPerChannel];
 
-        for (size_t i = 0; i < this->currentSize / this->channelCount; i++) {
-            newArray1[i] = this->kernelBuffer[i * 2];
-            newArray2[i] = this->kernelBuffer[i * 2 + 1];
+        for (size_t i = 0; i < framesPerChannel; i++) {
+            ch1[i] = this->kernelBuffer[i * 2];
+            ch2[i] = this->kernelBuffer[i * 2 + 1];
         }
 
-        int ret1 = this->kernelCh1.LoadKernel(
-            newArray1, this->currentSize / this->channelCount, 0x1000
-        );
-        int ret2 = this->kernelCh2.LoadKernel(
-            newArray2, this->currentSize / this->channelCount, 0x1000
-        );
-        if (ret1 == 0 || ret2 == 0) {
-            this->kernelCh1.UnloadKernel();
-            this->kernelCh2.UnloadKernel();
-            this->currentKernelBufferCrc = 0;
-            this->kernelId = 0;
-            delete[] this->kernelBuffer;
-            this->kernelBuffer = nullptr;
-            this->expectedSize = 0;
-            this->currentSize = 0;
-            this->channelCount = 0;
-            Reset();
-            return;
-        }
+        int ret1 = this->kernelCh1.LoadKernel(ch1, framesPerChannel, 0x1000);
+        int ret2 = this->kernelCh2.LoadKernel(ch2, framesPerChannel, 0x1000);
+        loadOk = (ret1 != 0 && ret2 != 0);
 
-        memset(this->kernelFilePath, 0, sizeof(this->kernelFilePath));
-        this->kernelId = kernelId;
-        delete[] this->kernelBuffer;
-        this->kernelBuffer = nullptr;
-        this->expectedSize = 0;
-        this->currentSize = 0;
-        this->channelCount = 0;
-        Reset();
-
-        delete[] newArray1;
-        delete[] newArray2;
+        delete[] ch1;
+        delete[] ch2;
     }
+
+    if (!loadOk) {
+        this->kernelCh1.UnloadKernel();
+        this->kernelCh2.UnloadKernel();
+        this->currentKernelBufferCrc = 0;
+        this->kernelId = 0;
+        ClearKernelBuffer();
+        Reset();
+        return;
+    }
+
+    memset(this->kernelFilePath, 0, sizeof(this->kernelFilePath));
+    this->kernelId = kernelId;
+    ClearKernelBuffer();
+    Reset();
 }
 
 bool Convolver::GetEnabled() {
@@ -255,8 +204,7 @@ uint32_t Convolver::Process(float *source, float *dest, uint32_t frameSize) {
             this->waveBufferL->PopSamples(0x1000, true);
         }
 
-        uint32_t popResult = this->waveBufferR->PopSamples(dest, frameSize, false);
-        return popResult;
+        return this->waveBufferR->PopSamples(dest, frameSize, false);
     }
 
     return frameSize;
@@ -290,24 +238,6 @@ void Convolver::SetEnable(bool enabled) {
         }
         this->enable = enabled;
     }
-}
-
-void Convolver::SetKernel(float *buf, uint32_t len) {
-    if (len < 16) return;
-
-    this->kernelCh1.Reset();
-    this->kernelCh2.Reset();
-
-    int ret1 = this->kernelCh1.LoadKernel(buf, len, 0x1000);
-    int ret2 = this->kernelCh2.LoadKernel(buf, len, 0x1000);
-    if (ret1 == 0 || ret2 == 0) {
-        this->kernelCh1.UnloadKernel();
-        this->kernelCh2.UnloadKernel();
-    }
-
-    this->kernelId = 0;
-    this->currentKernelBufferCrc = 0;
-    Reset();
 }
 
 void Convolver::SetKernel(const char *path) {
@@ -383,6 +313,24 @@ void Convolver::SetKernel(const char *path) {
         this->kernelId = 0;
         Reset();
     }
+}
+
+void Convolver::SetKernel(float *buf, uint32_t len) {
+    if (len < 16) return;
+
+    this->kernelCh1.Reset();
+    this->kernelCh2.Reset();
+
+    int ret1 = this->kernelCh1.LoadKernel(buf, len, 0x1000);
+    int ret2 = this->kernelCh2.LoadKernel(buf, len, 0x1000);
+    if (ret1 == 0 || ret2 == 0) {
+        this->kernelCh1.UnloadKernel();
+        this->kernelCh2.UnloadKernel();
+    }
+
+    this->kernelId = 0;
+    this->currentKernelBufferCrc = 0;
+    Reset();
 }
 
 void Convolver::SetKernelBuffer(uint32_t param_1, float *buf, uint32_t len) {

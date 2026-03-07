@@ -15,50 +15,28 @@ DepthSurround::DepthSurround() {
 }
 
 void DepthSurround::Process(float *samples, uint32_t size) {
-    if (this->enabled) {
-        if (!this->strengthAtLeast500) {
-            for (uint32_t i = 0; i < size; i++) {
-                float sampleLeft = samples[2 * i];
-                float sampleRight = samples[2 * i + 1];
+    if (!this->enabled) return;
 
-                this->prev[0] =
-                    this->gain
-                    * this->timeConstDelay[0].ProcessSample(sampleLeft + this->prev[1]);
-                this->prev[1] =
-                    this->gain
-                    * this->timeConstDelay[1].ProcessSample(sampleRight + this->prev[0]);
+    float gainR = this->strengthAtLeast500 ? -this->gain : this->gain;
 
-                float l = this->prev[0] + sampleLeft;
-                float r = this->prev[1] + sampleRight;
+    for (uint32_t i = 0; i < size; i++) {
+        float sampleLeft = samples[2 * i];
+        float sampleRight = samples[2 * i + 1];
 
-                float diff = (l - r) / 2.f;
-                float avg = (l + r) / 2.f;
-                float avgOut = (float) this->highpass.ProcessSample(diff);
-                samples[2 * i] = avg + (diff - avgOut);
-                samples[2 * i + 1] = avg - (diff - avgOut);
-            }
-        } else {
-            for (uint32_t i = 0; i < size; i++) {
-                float sampleLeft = samples[2 * i];
-                float sampleRight = samples[2 * i + 1];
+        this->prev[0] =
+            this->gain
+            * this->timeConstDelay[0].ProcessSample(sampleLeft + this->prev[1]);
+        this->prev[1] =
+            gainR * this->timeConstDelay[1].ProcessSample(sampleRight + this->prev[0]);
 
-                this->prev[0] =
-                    this->gain
-                    * this->timeConstDelay[0].ProcessSample(sampleLeft + this->prev[1]);
-                this->prev[1] =
-                    -this->gain
-                    * this->timeConstDelay[1].ProcessSample(sampleRight + this->prev[0]);
+        float l = this->prev[0] + sampleLeft;
+        float r = this->prev[1] + sampleRight;
 
-                float l = this->prev[0] + sampleLeft;
-                float r = this->prev[1] + sampleRight;
-
-                float diff = (l - r) / 2.f;
-                float avg = (l + r) / 2.f;
-                float avgOut = (float) this->highpass.ProcessSample(diff);
-                samples[2 * i] = avg + (diff - avgOut);
-                samples[2 * i + 1] = avg - (diff - avgOut);
-            }
-        }
+        float diff = (l - r) / 2.f;
+        float avg = (l + r) / 2.f;
+        float avgOut = (float) this->highpass.ProcessSample(diff);
+        samples[2 * i] = avg + (diff - avgOut);
+        samples[2 * i + 1] = avg - (diff - avgOut);
     }
 }
 

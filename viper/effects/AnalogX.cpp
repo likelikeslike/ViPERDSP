@@ -41,6 +41,11 @@ void AnalogX::Process(float *samples, uint32_t size) {
 }
 
 void AnalogX::Reset() {
+    static const struct {
+        float gain;
+        float cutoff;
+    } models[] = {{0.6f, 19650.0f}, {1.2f, 18233.0f}, {2.4f, 16307.0f}};
+
     this->highPass[0].RefreshFilter(
         MultiBiquad::FilterType::HIGH_PASS, 0.0, 240.0, this->samplingRate, 0.717, false
     );
@@ -58,79 +63,27 @@ void AnalogX::Reset() {
     this->harmonic[0].Reset();
     this->harmonic[1].Reset();
 
-    switch (this->processingModel) {
-        case 0: {
-            this->harmonic[0].SetHarmonics(ANALOGX_HARMONICS);
-            this->harmonic[1].SetHarmonics(ANALOGX_HARMONICS);
-
-            this->gain = 0.6;
-
-            this->lowPass[0].RefreshFilter(
-                MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                19650.0,
-                this->samplingRate,
-                0.717,
-                false
-            );
-            this->lowPass[1].RefreshFilter(
-                MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                19650.0,
-                this->samplingRate,
-                0.717,
-                false
-            );
-            break;
-        }
-        case 1: {
-            this->harmonic[0].SetHarmonics(ANALOGX_HARMONICS);
-            this->harmonic[1].SetHarmonics(ANALOGX_HARMONICS);
-
-            this->gain = 1.2;
-
-            this->lowPass[0].RefreshFilter(
-                MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                18233.0,
-                this->samplingRate,
-                0.717,
-                false
-            );
-            this->lowPass[1].RefreshFilter(
-                MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                18233.0,
-                this->samplingRate,
-                0.717,
-                false
-            );
-            break;
-        }
-        case 2: {
-            this->harmonic[0].SetHarmonics(ANALOGX_HARMONICS);
-            this->harmonic[1].SetHarmonics(ANALOGX_HARMONICS);
-
-            this->gain = 2.4;
-
-            this->lowPass[0].RefreshFilter(
-                MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                16307.0,
-                this->samplingRate,
-                0.717,
-                false
-            );
-            this->lowPass[1].RefreshFilter(
-                MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                16307.0,
-                this->samplingRate,
-                0.717,
-                false
-            );
-            break;
-        }
+    if (this->processingModel >= 0 && this->processingModel <= 2) {
+        this->harmonic[0].SetHarmonics(ANALOGX_HARMONICS);
+        this->harmonic[1].SetHarmonics(ANALOGX_HARMONICS);
+        this->gain = models[this->processingModel].gain;
+        float cutoff = models[this->processingModel].cutoff;
+        this->lowPass[0].RefreshFilter(
+            MultiBiquad::FilterType::LOW_PASS,
+            0.0,
+            cutoff,
+            this->samplingRate,
+            0.717,
+            false
+        );
+        this->lowPass[1].RefreshFilter(
+            MultiBiquad::FilterType::LOW_PASS,
+            0.0,
+            cutoff,
+            this->samplingRate,
+            0.717,
+            false
+        );
     }
 
     this->freqRange = 0;

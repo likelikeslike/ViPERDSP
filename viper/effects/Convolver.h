@@ -42,4 +42,5 @@ private:
     bool isValidCrossChannel;
     uint32_t samplingRate;
     bool enable;
+    void ClearKernelBuffer();
 };
