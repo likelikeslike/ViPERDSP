@@ -17,6 +17,7 @@
 #include "effects/TubeSimulator.h"
 #include "effects/VHE.h"
 #include "effects/ViPERBass.h"
+#include "effects/ViPERBassMono.h"
 #include "effects/ViPERClarity.h"
 #include "effects/ViPERDDC.h"
 #include "utils/AdaptiveBuffer.h"
@@ -63,6 +64,7 @@ private:
     FETCompressor fetCompressor;
     DynamicSystem dynamicSystem;
     ViPERBass viperBass;
+    ViPERBassMono viperBassMono;
     ViPERClarity viperClarity;
     DiffSurround diffSurround;
     Cure cure;

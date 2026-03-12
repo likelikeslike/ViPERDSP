@@ -28,6 +28,7 @@ set(VIPERDSP_SOURCES
     viper/effects/TubeSimulator.cpp
     viper/effects/VHE.cpp
     viper/effects/ViPERBass.cpp
+    viper/effects/ViPERBassMono.cpp
     viper/effects/ViPERClarity.cpp
     viper/effects/ViPERDDC.cpp
 

@@ -58,6 +58,9 @@ ViPER::ViPER() :
     this->viperBass.SetSamplingRate(this->samplingRate);
     this->viperBass.Reset();
 
+    this->viperBassMono.SetSamplingRate(this->samplingRate);
+    this->viperBassMono.Reset();
+
     this->viperClarity.SetSamplingRate(this->samplingRate);
     this->viperClarity.Reset();
 
@@ -153,6 +156,7 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->fetCompressor.Process(tmpBuf, tmpBufSize);
         this->dynamicSystem.Process(tmpBuf, tmpBufSize);
         this->viperBass.Process(tmpBuf, tmpBufSize);
+        this->viperBassMono.Process(tmpBuf, tmpBufSize);
         this->viperClarity.Process(tmpBuf, tmpBufSize);
         this->cure.Process(tmpBuf, tmpBufSize);
         this->tubeSimulator.TubeProcess(tmpBuf, size);
@@ -475,6 +479,36 @@ void ViPER::DispatchCommand(
         case PARAM_SPK_BASS_GAIN: {
             VIPER_LOGI("Bass[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
             this->viperBass.SetBassFactor((float) val1 / 100.0f);
+            break;
+        }
+
+        // Bass Mono (v0.5.0 algorithm)
+        case PARAM_HP_BASS_MONO_ENABLE:
+        case PARAM_SPK_BASS_MONO_ENABLE: {
+            VIPER_LOGI(
+                "BassMono[%s]: %s",
+                param == PARAM_HP_BASS_MONO_ENABLE ? "HP" : "SPK",
+                val1 ? "ON" : "OFF"
+            );
+            this->viperBassMono.SetEnable(val1 != 0);
+            break;
+        }
+        case PARAM_HP_BASS_MONO_MODE:
+        case PARAM_SPK_BASS_MONO_MODE: {
+            VIPER_LOGI("BassMono[%s]: mode=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->viperBassMono.SetProcessMode((ViPERBassMono::ProcessMode) val1);
+            break;
+        }
+        case PARAM_HP_BASS_MONO_FREQUENCY:
+        case PARAM_SPK_BASS_MONO_FREQUENCY: {
+            VIPER_LOGI("BassMono[%s]: freq=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->viperBassMono.SetSpeaker((uint32_t) val1);
+            break;
+        }
+        case PARAM_HP_BASS_MONO_GAIN:
+        case PARAM_SPK_BASS_MONO_GAIN: {
+            VIPER_LOGI("BassMono[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->viperBassMono.SetBassFactor((float) val1 / 100.0f);
             break;
         }
 
@@ -870,6 +904,9 @@ void ViPER::resetAllEffects() {
 
     this->viperBass.SetSamplingRate(this->samplingRate);
     this->viperBass.Reset();
+
+    this->viperBassMono.SetSamplingRate(this->samplingRate);
+    this->viperBassMono.Reset();
 
     this->viperClarity.SetSamplingRate(this->samplingRate);
     this->viperClarity.Reset();
