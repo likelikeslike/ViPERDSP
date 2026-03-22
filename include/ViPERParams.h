@@ -1,20 +1,19 @@
 #pragma once
 
 #ifndef VERSION_CODE
-#define VERSION_CODE 20260307
+#define VERSION_CODE 00000000
 #endif
 #ifndef VERSION_NAME
-#define VERSION_NAME "1.0.0"
+#define VERSION_NAME "0.0.0"
 #endif
 
 #define COMMAND_CODE_GET 0x01
 #define COMMAND_CODE_SET 0x02
 
 // System params
-#define PARAM_SET_UPDATE_STATUS 0x10001
 #define PARAM_SET_RESET_STATUS 0x10002
 
-// HP effect params: 0x10100 - 0x101FF
+// HP effect params: 0x10100 - 0x102FF
 #define PARAM_HP_CONVOLVER_ENABLE 0x10100
 #define PARAM_HP_CONVOLVER_SET_KERNEL 0x10101
 #define PARAM_HP_CONVOLVER_PREPARE_BUFFER 0x10102

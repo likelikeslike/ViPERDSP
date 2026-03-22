@@ -46,7 +46,6 @@ public:
     uint32_t GetConvolverKernelID() { return convolver.GetKernelID(); }
 
 private:
-    bool updateProcessTime;
     uint64_t processTimeMs;
     uint32_t samplingRate;
 

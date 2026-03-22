@@ -8,3 +8,4 @@ cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
 Makefile
+.DS_Store

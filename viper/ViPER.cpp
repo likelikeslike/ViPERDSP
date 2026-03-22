@@ -5,7 +5,6 @@
 #include <cstring>
 
 ViPER::ViPER() :
-    updateProcessTime(false),
     processTimeMs(0),
     samplingRate(VIPER_DEFAULT_SAMPLING_RATE),
     adaptiveBuffer(AdaptiveBuffer(2, 4096)),
@@ -91,16 +90,13 @@ ViPER::ViPER() :
     this->frameScale = 1.0;
     this->leftPan = 1.0;
     this->rightPan = 1.0;
-    this->updateProcessTime = false;
     this->processTimeMs = 0;
 }
 
 void ViPER::process(std::vector<float> &buffer, uint32_t size) {
-    if (this->updateProcessTime) {
-        auto now = std::chrono::system_clock::now();
-        auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
-        this->processTimeMs = now_ms.time_since_epoch().count();
-    }
+    auto now = std::chrono::system_clock::now();
+    auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
+    this->processTimeMs = now_ms.time_since_epoch().count();
 
     uint32_t ret;
     float *tmpBuf;
@@ -198,11 +194,6 @@ void ViPER::DispatchCommand(
     switch (param) {
 
         // System
-        case PARAM_SET_UPDATE_STATUS: {
-            VIPER_LOGI("UpdateStatus: %s", val1 ? "ON" : "OFF");
-            this->updateProcessTime = val1 != 0;
-            break;
-        }
         case PARAM_SET_RESET_STATUS: {
             VIPER_LOGI("ResetAllEffects");
             this->resetAllEffects();
