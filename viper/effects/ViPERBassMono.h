@@ -24,6 +24,7 @@ public:
     void SetProcessMode(ProcessMode processMode);
     void SetSamplingRate(uint32_t samplingRate);
     void SetSpeaker(uint32_t speaker);
+    void SetAntiPop(bool enabled);
 
 private:
     Polyphase *polyphase;

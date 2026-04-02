@@ -472,6 +472,16 @@ void ViPER::DispatchCommand(
             this->viperBass.SetBassFactor((float) val1 / 100.0f);
             break;
         }
+        case PARAM_HP_BASS_ANTI_POP:
+        case PARAM_SPK_BASS_ANTI_POP: {
+            VIPER_LOGI(
+                "Bass[%s]: antiPop=%s",
+                param < 0x10300 ? "HP" : "SPK",
+                val1 ? "ON" : "OFF"
+            );
+            this->viperBass.SetAntiPop(val1 != 0);
+            break;
+        }
 
         // Bass Mono (v0.5.0 algorithm)
         case PARAM_HP_BASS_MONO_ENABLE:
@@ -500,6 +510,16 @@ void ViPER::DispatchCommand(
         case PARAM_SPK_BASS_MONO_GAIN: {
             VIPER_LOGI("BassMono[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
             this->viperBassMono.SetBassFactor((float) val1 / 100.0f);
+            break;
+        }
+        case PARAM_HP_BASS_MONO_ANTI_POP:
+        case PARAM_SPK_BASS_MONO_ANTI_POP: {
+            VIPER_LOGI(
+                "BassMono[%s]: antiPop=%s",
+                param < 0x10300 ? "HP" : "SPK",
+                val1 ? "ON" : "OFF"
+            );
+            this->viperBassMono.SetAntiPop(val1 != 0);
             break;
         }
 

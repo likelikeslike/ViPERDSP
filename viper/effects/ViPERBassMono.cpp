@@ -133,3 +133,11 @@ void ViPERBassMono::SetSpeaker(uint32_t speaker) {
         );
     }
 }
+
+void ViPERBassMono::SetAntiPop(bool enabled) {
+    if (enabled) {
+        this->antiPop = 0.0f;
+    } else {
+        this->antiPop = 1.0f;
+    }
+}
