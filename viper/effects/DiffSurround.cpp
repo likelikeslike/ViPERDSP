@@ -7,6 +7,7 @@ DiffSurround::DiffSurround() :
     this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
     this->delayTime = 0.0f;
     this->enable = false;
+    this->reverse = false;
     Reset();
 }
 
@@ -38,8 +39,9 @@ void DiffSurround::Reset() {
     this->buffers[0].Reset();
     this->buffers[1].Reset();
 
-    this->buffers[1].PushZeros((uint32_t) ((double) this->delayTime / 1000.0
-                                           * (double) this->samplingRate));
+    uint32_t delaySamples =
+        (uint32_t) ((double) this->delayTime / 1000.0 * (double) this->samplingRate);
+    this->buffers[this->reverse ? 0 : 1].PushZeros(delaySamples);
 }
 
 void DiffSurround::SetDelayTime(float delayTime) {
@@ -55,6 +57,13 @@ void DiffSurround::SetEnable(bool enable) {
             Reset();
         }
         this->enable = enable;
+    }
+}
+
+void DiffSurround::SetReverse(bool reverse) {
+    if (this->reverse != reverse) {
+        this->reverse = reverse;
+        this->Reset();
     }
 }
 

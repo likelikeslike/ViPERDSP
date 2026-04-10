@@ -640,6 +640,16 @@ void ViPER::DispatchCommand(
             this->diffSurround.SetDelayTime((float) val1 / 100.0f);
             break;
         }
+        case PARAM_HP_DIFF_SURROUND_REVERSE:
+        case PARAM_SPK_DIFF_SURROUND_REVERSE: {
+            VIPER_LOGI(
+                "DiffSurr[%s]: reverse=%s",
+                param < 0x10300 ? "HP" : "SPK",
+                val1 ? "ON" : "OFF"
+            );
+            this->diffSurround.SetReverse(val1 != 0);
+            break;
+        }
 
         // Cure (Crossfeed)
         case PARAM_HP_CURE_ENABLE:
