@@ -51,7 +51,8 @@ float SoftwareLimiter::Process(float sample) {
     this->writeIndex = wi;
     float delayed = this->arr256[wi];
 
-    float envelope = this->gainEnvelope * 0.9999 + 0.0001;
+    float releaseCoeff = (this->gainEnvelope < this->smoothedGain) ? 0.999f : 0.9997f;
+    float envelope = this->gainEnvelope * releaseCoeff + (1.0f - releaseCoeff);
     float smoothed = newTargetGain * 0.0999 + this->smoothedGain * 0.8999;
     this->smoothedGain = smoothed;
     float gain = std::min(envelope, smoothed);
