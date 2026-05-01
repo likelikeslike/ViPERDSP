@@ -8,6 +8,8 @@ DiffSurround::DiffSurround() :
     this->delayTime = 0.0f;
     this->enable = false;
     this->reverse = false;
+    this->wetDryMix = 1.0f;
+    this->lpCutoff = 0.0f;
     Reset();
 }
 
@@ -27,8 +29,27 @@ void DiffSurround::Process(float *samples, uint32_t size) {
     outbufs[0] = this->buffers[0].GetBuffer();
     outbufs[1] = this->buffers[1].GetBuffer();
 
-    for (uint32_t i = 0; i < size * 2; i++) {
-        samples[i] = outbufs[i % 2][i / 2];
+    if (this->wetDryMix >= 1.0f && this->lpCutoff <= 0.0f) {
+        for (uint32_t i = 0; i < size * 2; i++) {
+            samples[i] = outbufs[i % 2][i / 2];
+        }
+    } else {
+        int delayedCh = this->reverse ? 0 : 1;
+        int directCh = 1 - delayedCh;
+        float wet = this->wetDryMix;
+        float dry = 1.0f - wet;
+
+        for (uint32_t i = 0; i < size; i++) {
+            float directSample = outbufs[directCh][i];
+            float delayedSample = outbufs[delayedCh][i];
+
+            if (this->lpCutoff > 0.0f) {
+                delayedSample = (float) this->lpFilter.ProcessSample(delayedSample);
+            }
+
+            samples[i * 2 + directCh] = directSample;
+            samples[i * 2 + delayedCh] = dry * directSample + wet * delayedSample;
+        }
     }
 
     this->buffers[0].PopSamples(size, false);
@@ -42,6 +63,17 @@ void DiffSurround::Reset() {
     uint32_t delaySamples =
         (uint32_t) ((double) this->delayTime / 1000.0 * (double) this->samplingRate);
     this->buffers[this->reverse ? 0 : 1].PushZeros(delaySamples);
+
+    if (this->lpCutoff > 0.0f) {
+        this->lpFilter.RefreshFilter(
+            MultiBiquad::FilterType::LOW_PASS,
+            0.0,
+            this->lpCutoff,
+            this->samplingRate,
+            0.7071,
+            false
+        );
+    }
 }
 
 void DiffSurround::SetDelayTime(float delayTime) {
@@ -71,5 +103,29 @@ void DiffSurround::SetSamplingRate(uint32_t samplingRate) {
     if (this->samplingRate != samplingRate) {
         this->samplingRate = samplingRate;
         this->Reset();
+    }
+}
+
+void DiffSurround::SetWetDryMix(float mix) {
+    if (mix < 0.0f) mix = 0.0f;
+    if (mix > 1.0f) mix = 1.0f;
+    this->wetDryMix = mix;
+}
+
+void DiffSurround::SetLPCutoff(float cutoff) {
+    if (cutoff < 0.0f) cutoff = 0.0f;
+    if (cutoff > 20000.0f) cutoff = 20000.0f;
+    if (this->lpCutoff != cutoff) {
+        this->lpCutoff = cutoff;
+        if (cutoff > 0.0f) {
+            this->lpFilter.RefreshFilter(
+                MultiBiquad::FilterType::LOW_PASS,
+                0.0,
+                cutoff,
+                this->samplingRate,
+                0.7071,
+                false
+            );
+        }
     }
 }

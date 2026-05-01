@@ -650,6 +650,20 @@ void ViPER::DispatchCommand(
             this->diffSurround.SetReverse(val1 != 0);
             break;
         }
+        case PARAM_HP_DIFF_SURROUND_WET_DRY_MIX:
+        case PARAM_SPK_DIFF_SURROUND_WET_DRY_MIX: {
+            VIPER_LOGI(
+                "DiffSurr[%s]: wetDryMix=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
+            this->diffSurround.SetWetDryMix((float) val1 / 100.0f);
+            break;
+        }
+        case PARAM_HP_DIFF_SURROUND_LP_CUTOFF:
+        case PARAM_SPK_DIFF_SURROUND_LP_CUTOFF: {
+            VIPER_LOGI("DiffSurr[%s]: lpCutoff=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->diffSurround.SetLPCutoff((float) val1);
+            break;
+        }
 
         // Cure (Crossfeed)
         case PARAM_HP_CURE_ENABLE:
