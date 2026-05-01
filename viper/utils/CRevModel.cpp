@@ -1,31 +1,18 @@
 #include "CRevModel.h"
 
 CRevModel::CRevModel() {
-    buffers[0] = new float[1116];
-    buffers[1] = new float[1139];
-    buffers[2] = new float[1188];
-    buffers[3] = new float[1211];
-    buffers[4] = new float[1277];
-    buffers[5] = new float[1300];
-    buffers[6] = new float[1356];
-    buffers[7] = new float[1379];
-    buffers[8] = new float[1422];
-    buffers[9] = new float[1445];
-    buffers[10] = new float[1491];
-    buffers[11] = new float[1514];
-    buffers[12] = new float[1557];
-    buffers[13] = new float[1580];
-    buffers[14] = new float[1617];
-    buffers[15] = new float[1640];
-
-    buffers[16] = new float[556];
-    buffers[17] = new float[579];
-    buffers[18] = new float[441];
-    buffers[19] = new float[464];
-    buffers[20] = new float[341];
-    buffers[21] = new float[364];
-    buffers[22] = new float[225];
-    buffers[23] = new float[248];
+    static const uint32_t sizes[24] = {1116, 1139, 1188, 1211, 1277, 1300, 1356, 1379,
+                                       1422, 1445, 1491, 1514, 1557, 1580, 1617, 1640,
+                                       556,  579,  441,  464,  341,  364,  225,  248};
+    uint32_t total = 0;
+    for (int i = 0; i < 24; i++)
+        total += sizes[i];
+    this->bufferPool = new float[total];
+    uint32_t offset = 0;
+    for (int i = 0; i < 24; i++) {
+        buffers[i] = this->bufferPool + offset;
+        offset += sizes[i];
+    }
 
     combL[0].SetBuffer(buffers[0], 1116);
     combR[0].SetBuffer(buffers[1], 1139);
@@ -73,9 +60,7 @@ CRevModel::CRevModel() {
 }
 
 CRevModel::~CRevModel() {
-    for (auto &buffer : buffers) {
-        delete[] buffer;
-    }
+    delete[] this->bufferPool;
 }
 
 float CRevModel::GetDamp() {

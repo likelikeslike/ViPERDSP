@@ -44,5 +44,6 @@ private:
     CAllpassFilter allpassL[4];
     CAllpassFilter allpassR[4];
 
+    float *bufferPool;
     float *buffers[24];
 };
