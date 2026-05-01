@@ -15,7 +15,6 @@ public:
     };
 
     ViPERBassMono();
-    ~ViPERBassMono();
 
     void Process(float *samples, uint32_t size);
     void Reset();
@@ -27,10 +26,10 @@ public:
     void SetAntiPop(bool enabled);
 
 private:
-    Polyphase *polyphase;
-    Biquad *biquad;
-    Subwoofer *subwoofer;
-    WaveBuffer *waveBuffer;
+    Polyphase polyphase;
+    Biquad biquad;
+    Subwoofer subwoofer;
+    WaveBuffer waveBuffer;
     bool enable;
     ProcessMode processMode;
     uint32_t samplingRate;
