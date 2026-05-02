@@ -1,7 +1,6 @@
 #include "ViPER.h"
 #include "../include/log.h"
 #include "constants.h"
-#include <chrono>
 #include <cstring>
 
 ViPER::ViPER() :
