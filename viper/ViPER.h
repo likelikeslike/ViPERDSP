@@ -6,6 +6,7 @@
 #include "effects/Convolver.h"
 #include "effects/Cure.h"
 #include "effects/DiffSurround.h"
+#include "effects/DynamicEQ.h"
 #include "effects/DynamicSystem.h"
 #include "effects/FETCompressor.h"
 #include "effects/IIRFilter.h"
@@ -60,6 +61,7 @@ private:
     SpectrumExtend spectrumExtend;
     StereoImager stereoImager;
     IIRFilter iirFilter;
+    DynamicEQ dynamicEQ;
     ColorfulMusic colorfulMusic;
     Reverberation reverberation;
     PlaybackGain playbackGain;

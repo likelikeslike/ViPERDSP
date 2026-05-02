@@ -17,6 +17,7 @@ set(VIPERDSP_SOURCES
     viper/effects/Convolver.cpp
     viper/effects/Cure.cpp
     viper/effects/DiffSurround.cpp
+    viper/effects/DynamicEQ.cpp
     viper/effects/DynamicSystem.cpp
     viper/effects/FETCompressor.cpp
     viper/effects/IIRFilter.cpp

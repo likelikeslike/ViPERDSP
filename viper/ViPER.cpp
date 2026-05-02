@@ -35,6 +35,10 @@ ViPER::ViPER() :
     this->iirFilter.SetSamplingRate(this->samplingRate);
     this->iirFilter.Reset();
 
+    this->dynamicEQ.SetEnable(false);
+    this->dynamicEQ.SetSamplingRate(this->samplingRate);
+    this->dynamicEQ.Reset();
+
     this->colorfulMusic.SetEnable(false);
     this->colorfulMusic.SetSamplingRate(this->samplingRate);
     this->colorfulMusic.Reset();
@@ -152,6 +156,7 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->viperDdc.Process(tmpBuf, size);
         this->spectrumExtend.Process(tmpBuf, size);
         this->iirFilter.Process(tmpBuf, tmpBufSize);
+        this->dynamicEQ.Process(tmpBuf, tmpBufSize);
         this->colorfulMusic.Process(tmpBuf, tmpBufSize);
         this->stereoImager.Process(tmpBuf, tmpBufSize);
         this->diffSurround.Process(tmpBuf, tmpBufSize);
@@ -1063,6 +1068,64 @@ void ViPER::DispatchCommand(
             break;
         }
 
+        // Dynamic EQ
+        case PARAM_HP_DYNAMIC_EQ_ENABLE:
+        case PARAM_SPK_DYNAMIC_EQ_ENABLE: {
+            VIPER_LOGI("DynEQ[%s]: %s",
+                param == PARAM_HP_DYNAMIC_EQ_ENABLE ? "HP" : "SPK",
+                val1 ? "ON" : "OFF");
+            this->dynamicEQ.SetEnable(val1 != 0);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_COUNT:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_COUNT: {
+            VIPER_LOGI("DynEQ[%s]: bandCount=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->dynamicEQ.SetBandCount(val1);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_FREQ:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_FREQ: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] freq=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::FREQ, (float) val2);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_Q:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_Q: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] Q=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::Q, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_GAIN:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_GAIN: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::GAIN, (float) val2 / 10.0f);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_THRESHOLD:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_THRESHOLD: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] threshold=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::THRESHOLD, (float) val2 / 10.0f);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_ATTACK:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_ATTACK: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] attack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::ATTACK, (float) val2);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_RELEASE:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_RELEASE: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] release=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::RELEASE, (float) val2);
+            break;
+        }
+        case PARAM_HP_DYNAMIC_EQ_BAND_FILTER_TYPE:
+        case PARAM_SPK_DYNAMIC_EQ_BAND_FILTER_TYPE: {
+            VIPER_LOGI("DynEQ[%s]: band[%d] filterType=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->dynamicEQ.SetBandParam(val1, DynamicEQ::FILTER_TYPE, (float) val2);
+            break;
+        }
+
         // Speaker Correction
         case PARAM_SPK_SPEAKER_CORRECTION_ENABLE: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
@@ -1096,6 +1159,9 @@ void ViPER::resetAllEffects() {
 
     this->iirFilter.SetSamplingRate(this->samplingRate);
     this->iirFilter.Reset();
+
+    this->dynamicEQ.SetSamplingRate(this->samplingRate);
+    this->dynamicEQ.Reset();
 
     this->colorfulMusic.SetSamplingRate(this->samplingRate);
     this->colorfulMusic.Reset();
