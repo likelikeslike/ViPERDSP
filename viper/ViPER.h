@@ -9,6 +9,7 @@
 #include "effects/DynamicSystem.h"
 #include "effects/FETCompressor.h"
 #include "effects/IIRFilter.h"
+#include "effects/MultibandCompressor.h"
 #include "effects/PlaybackGain.h"
 #include "effects/Reverberation.h"
 #include "effects/SoftwareLimiter.h"
@@ -61,6 +62,7 @@ private:
     Reverberation reverberation;
     PlaybackGain playbackGain;
     FETCompressor fetCompressor;
+    MultibandCompressor multibandCompressor;
     DynamicSystem dynamicSystem;
     ViPERBass viperBass;
     ViPERBassMono viperBassMono;

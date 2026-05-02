@@ -50,6 +50,10 @@ ViPER::ViPER() :
     this->fetCompressor.SetSamplingRate(this->samplingRate);
     this->fetCompressor.Reset();
 
+    this->multibandCompressor.SetEnable(false);
+    this->multibandCompressor.SetSamplingRate(this->samplingRate);
+    this->multibandCompressor.Reset();
+
     this->dynamicSystem.SetEnable(false);
     this->dynamicSystem.SetSamplingRate(this->samplingRate);
     this->dynamicSystem.Reset();
@@ -150,6 +154,7 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->speakerCorrection.Process(tmpBuf, tmpBufSize);
         this->playbackGain.Process(tmpBuf, tmpBufSize);
         this->fetCompressor.Process(tmpBuf, tmpBufSize);
+        this->multibandCompressor.Process(tmpBuf, tmpBufSize);
         this->dynamicSystem.Process(tmpBuf, tmpBufSize);
         this->viperBass.Process(tmpBuf, tmpBufSize);
         this->viperBassMono.Process(tmpBuf, tmpBufSize);
@@ -889,6 +894,130 @@ void ViPER::DispatchCommand(
             break;
         }
 
+        // Multiband Compressor
+        case PARAM_HP_MULTIBAND_COMP_ENABLE:
+        case PARAM_SPK_MULTIBAND_COMP_ENABLE: {
+            VIPER_LOGI("MBComp[%s]: %s",
+                param == PARAM_HP_MULTIBAND_COMP_ENABLE ? "HP" : "SPK",
+                val1 ? "ON" : "OFF");
+            this->multibandCompressor.SetEnable(val1 != 0);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_COUNT:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_COUNT: {
+            VIPER_LOGI("MBComp[%s]: bandCount=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->multibandCompressor.SetBandCount(val1);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ:
+        case PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ: {
+            VIPER_LOGI("MBComp[%s]: xover[%d]=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetCrossoverFrequency(val1, (float) val2);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD: {
+            VIPER_LOGI("MBComp[%s]: band[%d] threshold=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::THRESHOLD, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_RATIO:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_RATIO: {
+            VIPER_LOGI("MBComp[%s]: band[%d] ratio=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::RATIO, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_KNEE:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_KNEE: {
+            VIPER_LOGI("MBComp[%s]: band[%d] knee=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::KNEE, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE: {
+            VIPER_LOGI("MBComp[%s]: band[%d] autoKnee=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_KNEE, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_GAIN:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_GAIN: {
+            VIPER_LOGI("MBComp[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::GAIN, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN: {
+            VIPER_LOGI("MBComp[%s]: band[%d] autoGain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_GAIN, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_ATTACK:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK: {
+            VIPER_LOGI("MBComp[%s]: band[%d] attack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::ATTACK, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK: {
+            VIPER_LOGI("MBComp[%s]: band[%d] autoAttack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_ATTACK, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_RELEASE:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE: {
+            VIPER_LOGI("MBComp[%s]: band[%d] release=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::RELEASE, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE: {
+            VIPER_LOGI("MBComp[%s]: band[%d] autoRelease=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_RELEASE, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI: {
+            VIPER_LOGI("MBComp[%s]: band[%d] kneeMulti=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::KNEE_MULTI, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK: {
+            VIPER_LOGI("MBComp[%s]: band[%d] maxAttack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::MAX_ATTACK, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE: {
+            VIPER_LOGI("MBComp[%s]: band[%d] maxRelease=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::MAX_RELEASE, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_CREST:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_CREST: {
+            VIPER_LOGI("MBComp[%s]: band[%d] crest=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::CREST, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_ADAPT:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT: {
+            VIPER_LOGI("MBComp[%s]: band[%d] adapt=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::ADAPT, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP: {
+            VIPER_LOGI("MBComp[%s]: band[%d] noClip=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::NO_CLIP, (float) val2 / 100.0f);
+            break;
+        }
+        case PARAM_HP_MULTIBAND_COMP_BAND_ENABLE:
+        case PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE: {
+            VIPER_LOGI("MBComp[%s]: band[%d] enable=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            this->multibandCompressor.SetBandParameter(val1, FETCompressor::ENABLE, (float) val2 / 100.0f);
+            break;
+        }
+
         // Speaker Correction
         case PARAM_SPK_SPEAKER_CORRECTION_ENABLE: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
@@ -933,6 +1062,9 @@ void ViPER::resetAllEffects() {
 
     this->fetCompressor.SetSamplingRate(this->samplingRate);
     this->fetCompressor.Reset();
+
+    this->multibandCompressor.SetSamplingRate(this->samplingRate);
+    this->multibandCompressor.Reset();
 
     this->dynamicSystem.SetSamplingRate(this->samplingRate);
     this->dynamicSystem.Reset();
