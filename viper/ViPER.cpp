@@ -169,19 +169,19 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->stereoImager.Process(tmpBuf, tmpBufSize);
         this->diffSurround.Process(tmpBuf, tmpBufSize);
         this->reverberation.Process(tmpBuf, tmpBufSize);
-        this->psychoacousticBass.Process(tmpBuf, tmpBufSize);
         this->speakerCorrection.Process(tmpBuf, tmpBufSize);
         this->playbackGain.Process(tmpBuf, tmpBufSize);
-        this->lufsTargeting.Process(tmpBuf, tmpBufSize);
-        this->fetCompressor.Process(tmpBuf, tmpBufSize);
         this->multibandCompressor.Process(tmpBuf, tmpBufSize);
+        this->fetCompressor.Process(tmpBuf, tmpBufSize);
         this->dynamicSystem.Process(tmpBuf, tmpBufSize);
+        this->tubeSimulator.TubeProcess(tmpBuf, size);
+        this->psychoacousticBass.Process(tmpBuf, tmpBufSize);
         this->viperBass.Process(tmpBuf, tmpBufSize);
         this->viperBassMono.Process(tmpBuf, tmpBufSize);
         this->viperClarity.Process(tmpBuf, tmpBufSize);
         this->cure.Process(tmpBuf, tmpBufSize);
-        this->tubeSimulator.TubeProcess(tmpBuf, size);
         this->analogX.Process(tmpBuf, tmpBufSize);
+        this->lufsTargeting.Process(tmpBuf, tmpBufSize);
 
         if (this->frameScale != 1.0) {
             this->adaptiveBuffer.ScaleFrames(this->frameScale);
@@ -229,9 +229,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_CONVOLVER_ENABLE:
         case PARAM_SPK_CONVOLVER_ENABLE: {
             VIPER_LOGI(
-                "Convolver[%s]: %s",
-                param == PARAM_HP_CONVOLVER_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "Convolver[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->convolver.SetEnable(val1 != 0);
             break;
@@ -244,7 +242,7 @@ void ViPER::DispatchCommand(
                 memcpy(path, arr, arrSize < 255 ? arrSize : 255);
                 VIPER_LOGI(
                     "Convolver[%s]: SetKernel path=%s",
-                    param == PARAM_HP_CONVOLVER_SET_KERNEL ? "HP" : "SPK",
+                    param < 0x10300 ? "HP" : "SPK",
                     path
                 );
                 this->convolver.SetKernel(path);
@@ -255,7 +253,7 @@ void ViPER::DispatchCommand(
         case PARAM_SPK_CONVOLVER_PREPARE_BUFFER: {
             VIPER_LOGI(
                 "Convolver[%s]: PrepareBuffer channels=%d frames=%d sr=%d",
-                param == PARAM_HP_CONVOLVER_PREPARE_BUFFER ? "HP" : "SPK",
+                param < 0x10300 ? "HP" : "SPK",
                 val1,
                 val2,
                 val3
@@ -267,7 +265,7 @@ void ViPER::DispatchCommand(
         case PARAM_SPK_CONVOLVER_SET_BUFFER: {
             VIPER_LOGI(
                 "Convolver[%s]: SetBuffer offset=%d size=%u",
-                param == PARAM_HP_CONVOLVER_SET_BUFFER ? "HP" : "SPK",
+                param < 0x10300 ? "HP" : "SPK",
                 val1,
                 arrSize
             );
@@ -278,7 +276,7 @@ void ViPER::DispatchCommand(
         case PARAM_SPK_CONVOLVER_COMMIT_BUFFER: {
             VIPER_LOGI(
                 "Convolver[%s]: CommitBuffer channels=%d frames=%d sr=%d",
-                param == PARAM_HP_CONVOLVER_COMMIT_BUFFER ? "HP" : "SPK",
+                param < 0x10300 ? "HP" : "SPK",
                 val1,
                 val2,
                 val3
@@ -289,9 +287,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_CONVOLVER_CROSS_CHANNEL:
         case PARAM_SPK_CONVOLVER_CROSS_CHANNEL: {
             VIPER_LOGI(
-                "Convolver[%s]: CrossChannel=%d%%",
-                param == PARAM_HP_CONVOLVER_CROSS_CHANNEL ? "HP" : "SPK",
-                val1
+                "Convolver[%s]: CrossChannel=%d%%", param < 0x10300 ? "HP" : "SPK", val1
             );
             this->convolver.SetCrossChannel((float) val1 / 100.0f);
             break;
@@ -301,9 +297,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_DDC_ENABLE:
         case PARAM_SPK_DDC_ENABLE: {
             VIPER_LOGI(
-                "DDC[%s]: %s",
-                param == PARAM_HP_DDC_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "DDC[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->viperDdc.SetEnable(val1 != 0);
             break;
@@ -311,9 +305,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_DDC_COEFFICIENTS:
         case PARAM_SPK_DDC_COEFFICIENTS: {
             VIPER_LOGI(
-                "DDC[%s]: SetCoeffs arrSize=%u",
-                param == PARAM_HP_DDC_COEFFICIENTS ? "HP" : "SPK",
-                arrSize
+                "DDC[%s]: SetCoeffs arrSize=%u", param < 0x10300 ? "HP" : "SPK", arrSize
             );
             this->viperDdc.SetCoeffs(
                 arrSize, (float *) arr, (float *) (arr + arrSize * sizeof(float))
@@ -324,32 +316,21 @@ void ViPER::DispatchCommand(
         // EQ (IIR Filter)
         case PARAM_HP_EQ_ENABLE:
         case PARAM_SPK_EQ_ENABLE: {
-            VIPER_LOGI(
-                "EQ[%s]: %s",
-                param == PARAM_HP_EQ_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
-            );
+            VIPER_LOGI("EQ[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF");
             this->iirFilter.SetEnable(val1 != 0);
             break;
         }
         case PARAM_HP_EQ_BAND_LEVEL:
         case PARAM_SPK_EQ_BAND_LEVEL: {
             VIPER_LOGI(
-                "EQ[%s]: band=%d level=%d",
-                param == PARAM_HP_EQ_BAND_LEVEL ? "HP" : "SPK",
-                val1,
-                val2
+                "EQ[%s]: band=%d level=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
             );
             this->iirFilter.SetBandLevel((uint32_t) val1, (float) val2 / 100.0f);
             break;
         }
         case PARAM_HP_EQ_BAND_COUNT:
         case PARAM_SPK_EQ_BAND_COUNT: {
-            VIPER_LOGI(
-                "EQ[%s]: bandCount=%d",
-                param == PARAM_HP_EQ_BAND_COUNT ? "HP" : "SPK",
-                val1
-            );
+            VIPER_LOGI("EQ[%s]: bandCount=%d", param < 0x10300 ? "HP" : "SPK", val1);
             this->iirFilter.SetBandCount((uint32_t) val1);
             break;
         }
@@ -358,9 +339,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_REVERB_ENABLE:
         case PARAM_SPK_REVERB_ENABLE: {
             VIPER_LOGI(
-                "Reverb[%s]: %s",
-                param == PARAM_HP_REVERB_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "Reverb[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->reverberation.SetEnable(val1 != 0);
             break;
@@ -400,9 +379,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_AGC_ENABLE:
         case PARAM_SPK_AGC_ENABLE: {
             VIPER_LOGI(
-                "AGC[%s]: %s",
-                param == PARAM_HP_AGC_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "AGC[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->playbackGain.SetEnable(val1 != 0);
             break;
@@ -430,9 +407,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_DYNAMIC_SYSTEM_ENABLE:
         case PARAM_SPK_DYNAMIC_SYSTEM_ENABLE: {
             VIPER_LOGI(
-                "DynSys[%s]: %s",
-                param == PARAM_HP_DYNAMIC_SYSTEM_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "DynSys[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->dynamicSystem.SetEnable(val1 != 0);
             break;
@@ -472,9 +447,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_BASS_ENABLE:
         case PARAM_SPK_BASS_ENABLE: {
             VIPER_LOGI(
-                "Bass[%s]: %s",
-                param == PARAM_HP_BASS_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "Bass[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->viperBass.SetEnable(val1 != 0);
             break;
@@ -512,9 +485,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_BASS_MONO_ENABLE:
         case PARAM_SPK_BASS_MONO_ENABLE: {
             VIPER_LOGI(
-                "BassMono[%s]: %s",
-                param == PARAM_HP_BASS_MONO_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "BassMono[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->viperBassMono.SetEnable(val1 != 0);
             break;
@@ -552,9 +523,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_CLARITY_ENABLE:
         case PARAM_SPK_CLARITY_ENABLE: {
             VIPER_LOGI(
-                "Clarity[%s]: %s",
-                param == PARAM_HP_CLARITY_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "Clarity[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->viperClarity.SetEnable(val1 != 0);
             break;
@@ -576,9 +545,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_HEADPHONE_SURROUND_ENABLE:
         case PARAM_SPK_HEADPHONE_SURROUND_ENABLE: {
             VIPER_LOGI(
-                "VHE[%s]: %s",
-                param == PARAM_HP_HEADPHONE_SURROUND_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "VHE[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->vhe.SetEnable(val1 != 0);
             break;
@@ -594,9 +561,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_SPECTRUM_EXTENSION_ENABLE:
         case PARAM_SPK_SPECTRUM_EXTENSION_ENABLE: {
             VIPER_LOGI(
-                "SpecExt[%s]: %s",
-                param == PARAM_HP_SPECTRUM_EXTENSION_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "SpecExt[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->spectrumExtend.SetEnable(val1 != 0);
             break;
@@ -620,9 +585,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_FIELD_SURROUND_ENABLE:
         case PARAM_SPK_FIELD_SURROUND_ENABLE: {
             VIPER_LOGI(
-                "FieldSurr[%s]: %s",
-                param == PARAM_HP_FIELD_SURROUND_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "FieldSurr[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->colorfulMusic.SetEnable(val1 != 0);
             break;
@@ -652,9 +615,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_DIFF_SURROUND_ENABLE:
         case PARAM_SPK_DIFF_SURROUND_ENABLE: {
             VIPER_LOGI(
-                "DiffSurr[%s]: %s",
-                param == PARAM_HP_DIFF_SURROUND_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "DiffSurr[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->diffSurround.SetEnable(val1 != 0);
             break;
@@ -694,9 +655,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_CURE_ENABLE:
         case PARAM_SPK_CURE_ENABLE: {
             VIPER_LOGI(
-                "Cure[%s]: %s",
-                param == PARAM_HP_CURE_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "Cure[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->cure.SetEnable(val1 != 0);
             break;
@@ -728,9 +687,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_TUBE_SIMULATOR_ENABLE:
         case PARAM_SPK_TUBE_SIMULATOR_ENABLE: {
             VIPER_LOGI(
-                "TubeSim[%s]: %s",
-                param == PARAM_HP_TUBE_SIMULATOR_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "TubeSim[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->tubeSimulator.SetEnable(val1 != 0);
             break;
@@ -740,9 +697,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_ANALOGX_ENABLE:
         case PARAM_SPK_ANALOGX_ENABLE: {
             VIPER_LOGI(
-                "AnalogX[%s]: %s",
-                param == PARAM_HP_ANALOGX_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "AnalogX[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->analogX.SetEnable(val1 != 0);
             break;
@@ -786,9 +741,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_FET_COMPRESSOR_ENABLE:
         case PARAM_SPK_FET_COMPRESSOR_ENABLE: {
             VIPER_LOGI(
-                "FET[%s]: %s",
-                param == PARAM_HP_FET_COMPRESSOR_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
+                "FET[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
             );
             this->fetCompressor.SetParameter(
                 FETCompressor::ENABLE, (float) val1 / 100.0f
@@ -917,9 +870,9 @@ void ViPER::DispatchCommand(
         // Multiband Compressor
         case PARAM_HP_MULTIBAND_COMP_ENABLE:
         case PARAM_SPK_MULTIBAND_COMP_ENABLE: {
-            VIPER_LOGI("MBComp[%s]: %s",
-                param == PARAM_HP_MULTIBAND_COMP_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF");
+            VIPER_LOGI(
+                "MBComp[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
+            );
             this->multibandCompressor.SetEnable(val1 != 0);
             break;
         }
@@ -931,149 +884,274 @@ void ViPER::DispatchCommand(
         }
         case PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ:
         case PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ: {
-            VIPER_LOGI("MBComp[%s]: xover[%d]=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "MBComp[%s]: xover[%d]=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
+            );
             this->multibandCompressor.SetCrossoverFrequency(val1, (float) val2);
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD:
         case PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD: {
-            VIPER_LOGI("MBComp[%s]: band[%d] threshold=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::THRESHOLD, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] threshold=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::THRESHOLD, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_RATIO:
         case PARAM_SPK_MULTIBAND_COMP_BAND_RATIO: {
-            VIPER_LOGI("MBComp[%s]: band[%d] ratio=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::RATIO, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] ratio=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::RATIO, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_KNEE:
         case PARAM_SPK_MULTIBAND_COMP_BAND_KNEE: {
-            VIPER_LOGI("MBComp[%s]: band[%d] knee=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::KNEE, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] knee=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::KNEE, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE:
         case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE: {
-            VIPER_LOGI("MBComp[%s]: band[%d] autoKnee=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_KNEE, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] autoKnee=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::AUTO_KNEE, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_GAIN:
         case PARAM_SPK_MULTIBAND_COMP_BAND_GAIN: {
-            VIPER_LOGI("MBComp[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::GAIN, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::GAIN, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN:
         case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN: {
-            VIPER_LOGI("MBComp[%s]: band[%d] autoGain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_GAIN, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] autoGain=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::AUTO_GAIN, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_ATTACK:
         case PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK: {
-            VIPER_LOGI("MBComp[%s]: band[%d] attack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::ATTACK, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] attack=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::ATTACK, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK:
         case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK: {
-            VIPER_LOGI("MBComp[%s]: band[%d] autoAttack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_ATTACK, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] autoAttack=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::AUTO_ATTACK, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_RELEASE:
         case PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE: {
-            VIPER_LOGI("MBComp[%s]: band[%d] release=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::RELEASE, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] release=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::RELEASE, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE:
         case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE: {
-            VIPER_LOGI("MBComp[%s]: band[%d] autoRelease=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::AUTO_RELEASE, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] autoRelease=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::AUTO_RELEASE, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI:
         case PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI: {
-            VIPER_LOGI("MBComp[%s]: band[%d] kneeMulti=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::KNEE_MULTI, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] kneeMulti=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::KNEE_MULTI, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK:
         case PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK: {
-            VIPER_LOGI("MBComp[%s]: band[%d] maxAttack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::MAX_ATTACK, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] maxAttack=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::MAX_ATTACK, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE:
         case PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE: {
-            VIPER_LOGI("MBComp[%s]: band[%d] maxRelease=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::MAX_RELEASE, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] maxRelease=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::MAX_RELEASE, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_CREST:
         case PARAM_SPK_MULTIBAND_COMP_BAND_CREST: {
-            VIPER_LOGI("MBComp[%s]: band[%d] crest=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::CREST, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] crest=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::CREST, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_ADAPT:
         case PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT: {
-            VIPER_LOGI("MBComp[%s]: band[%d] adapt=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::ADAPT, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] adapt=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::ADAPT, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP:
         case PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP: {
-            VIPER_LOGI("MBComp[%s]: band[%d] noClip=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::NO_CLIP, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] noClip=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::NO_CLIP, (float) val2 / 100.0f
+            );
             break;
         }
         case PARAM_HP_MULTIBAND_COMP_BAND_ENABLE:
         case PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE: {
-            VIPER_LOGI("MBComp[%s]: band[%d] enable=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->multibandCompressor.SetBandParameter(val1, FETCompressor::ENABLE, (float) val2 / 100.0f);
+            VIPER_LOGI(
+                "MBComp[%s]: band[%d] enable=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->multibandCompressor.SetBandParameter(
+                val1, FETCompressor::ENABLE, (float) val2 / 100.0f
+            );
             break;
         }
 
         // Stereo Imager
         case PARAM_HP_STEREO_IMAGER_ENABLE:
         case PARAM_SPK_STEREO_IMAGER_ENABLE: {
-            VIPER_LOGI("StereoImg[%s]: %s",
-                param == PARAM_HP_STEREO_IMAGER_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF");
+            VIPER_LOGI(
+                "StereoImg[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
+            );
             this->stereoImager.SetEnable(val1 != 0);
             break;
         }
         case PARAM_HP_STEREO_IMAGER_LOW_WIDTH:
         case PARAM_SPK_STEREO_IMAGER_LOW_WIDTH: {
-            VIPER_LOGI("StereoImg[%s]: lowWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            VIPER_LOGI(
+                "StereoImg[%s]: lowWidth=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
             this->stereoImager.SetLowWidth((float) val1);
             break;
         }
         case PARAM_HP_STEREO_IMAGER_MID_WIDTH:
         case PARAM_SPK_STEREO_IMAGER_MID_WIDTH: {
-            VIPER_LOGI("StereoImg[%s]: midWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            VIPER_LOGI(
+                "StereoImg[%s]: midWidth=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
             this->stereoImager.SetMidWidth((float) val1);
             break;
         }
         case PARAM_HP_STEREO_IMAGER_HIGH_WIDTH:
         case PARAM_SPK_STEREO_IMAGER_HIGH_WIDTH: {
-            VIPER_LOGI("StereoImg[%s]: highWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            VIPER_LOGI(
+                "StereoImg[%s]: highWidth=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
             this->stereoImager.SetHighWidth((float) val1);
             break;
         }
         case PARAM_HP_STEREO_IMAGER_LOW_CROSSOVER:
         case PARAM_SPK_STEREO_IMAGER_LOW_CROSSOVER: {
-            VIPER_LOGI("StereoImg[%s]: lowXover=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            VIPER_LOGI(
+                "StereoImg[%s]: lowXover=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
             this->stereoImager.SetLowCrossover((float) val1);
             break;
         }
         case PARAM_HP_STEREO_IMAGER_HIGH_CROSSOVER:
         case PARAM_SPK_STEREO_IMAGER_HIGH_CROSSOVER: {
-            VIPER_LOGI("StereoImg[%s]: highXover=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            VIPER_LOGI(
+                "StereoImg[%s]: highXover=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
             this->stereoImager.SetHighCrossover((float) val1);
             break;
         }
@@ -1081,9 +1159,9 @@ void ViPER::DispatchCommand(
         // Dynamic EQ
         case PARAM_HP_DYNAMIC_EQ_ENABLE:
         case PARAM_SPK_DYNAMIC_EQ_ENABLE: {
-            VIPER_LOGI("DynEQ[%s]: %s",
-                param == PARAM_HP_DYNAMIC_EQ_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF");
+            VIPER_LOGI(
+                "DynEQ[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
+            );
             this->dynamicEQ.SetEnable(val1 != 0);
             break;
         }
@@ -1095,43 +1173,71 @@ void ViPER::DispatchCommand(
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_FREQ:
         case PARAM_SPK_DYNAMIC_EQ_BAND_FREQ: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] freq=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] freq=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
+            );
             this->dynamicEQ.SetBandParam(val1, DynamicEQ::FREQ, (float) val2);
             break;
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_Q:
         case PARAM_SPK_DYNAMIC_EQ_BAND_Q: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] Q=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] Q=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
+            );
             this->dynamicEQ.SetBandParam(val1, DynamicEQ::Q, (float) val2 / 100.0f);
             break;
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_GAIN:
         case PARAM_SPK_DYNAMIC_EQ_BAND_GAIN: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
+            );
             this->dynamicEQ.SetBandParam(val1, DynamicEQ::GAIN, (float) val2 / 10.0f);
             break;
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_THRESHOLD:
         case PARAM_SPK_DYNAMIC_EQ_BAND_THRESHOLD: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] threshold=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::THRESHOLD, (float) val2 / 10.0f);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] threshold=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
+            this->dynamicEQ.SetBandParam(
+                val1, DynamicEQ::THRESHOLD, (float) val2 / 10.0f
+            );
             break;
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_ATTACK:
         case PARAM_SPK_DYNAMIC_EQ_BAND_ATTACK: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] attack=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] attack=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
             this->dynamicEQ.SetBandParam(val1, DynamicEQ::ATTACK, (float) val2);
             break;
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_RELEASE:
         case PARAM_SPK_DYNAMIC_EQ_BAND_RELEASE: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] release=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] release=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
             this->dynamicEQ.SetBandParam(val1, DynamicEQ::RELEASE, (float) val2);
             break;
         }
         case PARAM_HP_DYNAMIC_EQ_BAND_FILTER_TYPE:
         case PARAM_SPK_DYNAMIC_EQ_BAND_FILTER_TYPE: {
-            VIPER_LOGI("DynEQ[%s]: band[%d] filterType=%d", param < 0x10300 ? "HP" : "SPK", val1, val2);
+            VIPER_LOGI(
+                "DynEQ[%s]: band[%d] filterType=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1,
+                val2
+            );
             this->dynamicEQ.SetBandParam(val1, DynamicEQ::FILTER_TYPE, (float) val2);
             break;
         }
@@ -1139,9 +1245,9 @@ void ViPER::DispatchCommand(
         // LUFS Targeting
         case PARAM_HP_LUFS_ENABLE:
         case PARAM_SPK_LUFS_ENABLE: {
-            VIPER_LOGI("LUFS[%s]: %s",
-                param == PARAM_HP_LUFS_ENABLE ? "HP" : "SPK",
-                val1 ? "ON" : "OFF");
+            VIPER_LOGI(
+                "LUFS[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
+            );
             this->lufsTargeting.SetEnable(val1 != 0);
             break;
         }
@@ -1175,9 +1281,7 @@ void ViPER::DispatchCommand(
         }
         case PARAM_HP_PSYCHO_BASS_CUTOFF:
         case PARAM_SPK_PSYCHO_BASS_CUTOFF: {
-            VIPER_LOGI(
-                "PsychoBass[%s]: cutoff=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
+            VIPER_LOGI("PsychoBass[%s]: cutoff=%d", param < 0x10300 ? "HP" : "SPK", val1);
             this->psychoacousticBass.SetCutoff((uint32_t) val1);
             break;
         }
@@ -1192,9 +1296,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_PSYCHO_BASS_HARMONIC_ORDER:
         case PARAM_SPK_PSYCHO_BASS_HARMONIC_ORDER: {
             VIPER_LOGI(
-                "PsychoBass[%s]: harmonicOrder=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1
+                "PsychoBass[%s]: harmonicOrder=%d", param < 0x10300 ? "HP" : "SPK", val1
             );
             this->psychoacousticBass.SetHarmonicOrder((uint32_t) val1);
             break;
@@ -1202,9 +1304,7 @@ void ViPER::DispatchCommand(
         case PARAM_HP_PSYCHO_BASS_ORIGINAL_LEVEL:
         case PARAM_SPK_PSYCHO_BASS_ORIGINAL_LEVEL: {
             VIPER_LOGI(
-                "PsychoBass[%s]: originalLevel=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1
+                "PsychoBass[%s]: originalLevel=%d", param < 0x10300 ? "HP" : "SPK", val1
             );
             this->psychoacousticBass.SetOriginalBassLevel((uint32_t) val1);
             break;
