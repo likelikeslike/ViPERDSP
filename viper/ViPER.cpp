@@ -39,6 +39,10 @@ ViPER::ViPER() :
     this->colorfulMusic.SetSamplingRate(this->samplingRate);
     this->colorfulMusic.Reset();
 
+    this->stereoImager.SetEnable(false);
+    this->stereoImager.SetSamplingRate(this->samplingRate);
+    this->stereoImager.Reset();
+
     this->reverberation.SetEnable(false);
     this->reverberation.Reset();
 
@@ -149,6 +153,7 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->spectrumExtend.Process(tmpBuf, size);
         this->iirFilter.Process(tmpBuf, tmpBufSize);
         this->colorfulMusic.Process(tmpBuf, tmpBufSize);
+        this->stereoImager.Process(tmpBuf, tmpBufSize);
         this->diffSurround.Process(tmpBuf, tmpBufSize);
         this->reverberation.Process(tmpBuf, tmpBufSize);
         this->speakerCorrection.Process(tmpBuf, tmpBufSize);
@@ -1018,6 +1023,46 @@ void ViPER::DispatchCommand(
             break;
         }
 
+        // Stereo Imager
+        case PARAM_HP_STEREO_IMAGER_ENABLE:
+        case PARAM_SPK_STEREO_IMAGER_ENABLE: {
+            VIPER_LOGI("StereoImg[%s]: %s",
+                param == PARAM_HP_STEREO_IMAGER_ENABLE ? "HP" : "SPK",
+                val1 ? "ON" : "OFF");
+            this->stereoImager.SetEnable(val1 != 0);
+            break;
+        }
+        case PARAM_HP_STEREO_IMAGER_LOW_WIDTH:
+        case PARAM_SPK_STEREO_IMAGER_LOW_WIDTH: {
+            VIPER_LOGI("StereoImg[%s]: lowWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->stereoImager.SetLowWidth((float) val1);
+            break;
+        }
+        case PARAM_HP_STEREO_IMAGER_MID_WIDTH:
+        case PARAM_SPK_STEREO_IMAGER_MID_WIDTH: {
+            VIPER_LOGI("StereoImg[%s]: midWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->stereoImager.SetMidWidth((float) val1);
+            break;
+        }
+        case PARAM_HP_STEREO_IMAGER_HIGH_WIDTH:
+        case PARAM_SPK_STEREO_IMAGER_HIGH_WIDTH: {
+            VIPER_LOGI("StereoImg[%s]: highWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->stereoImager.SetHighWidth((float) val1);
+            break;
+        }
+        case PARAM_HP_STEREO_IMAGER_LOW_CROSSOVER:
+        case PARAM_SPK_STEREO_IMAGER_LOW_CROSSOVER: {
+            VIPER_LOGI("StereoImg[%s]: lowXover=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->stereoImager.SetLowCrossover((float) val1);
+            break;
+        }
+        case PARAM_HP_STEREO_IMAGER_HIGH_CROSSOVER:
+        case PARAM_SPK_STEREO_IMAGER_HIGH_CROSSOVER: {
+            VIPER_LOGI("StereoImg[%s]: highXover=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->stereoImager.SetHighCrossover((float) val1);
+            break;
+        }
+
         // Speaker Correction
         case PARAM_SPK_SPEAKER_CORRECTION_ENABLE: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
@@ -1054,6 +1099,9 @@ void ViPER::resetAllEffects() {
 
     this->colorfulMusic.SetSamplingRate(this->samplingRate);
     this->colorfulMusic.Reset();
+
+    this->stereoImager.SetSamplingRate(this->samplingRate);
+    this->stereoImager.Reset();
 
     this->reverberation.Reset();
 

@@ -15,6 +15,7 @@
 #include "effects/SoftwareLimiter.h"
 #include "effects/SpeakerCorrection.h"
 #include "effects/SpectrumExtend.h"
+#include "effects/StereoImager.h"
 #include "effects/TubeSimulator.h"
 #include "effects/VHE.h"
 #include "effects/ViPERBass.h"
@@ -57,6 +58,7 @@ private:
     VHE vhe;
     ViPERDDC viperDdc;
     SpectrumExtend spectrumExtend;
+    StereoImager stereoImager;
     IIRFilter iirFilter;
     ColorfulMusic colorfulMusic;
     Reverberation reverberation;

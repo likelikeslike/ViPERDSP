@@ -26,6 +26,7 @@ set(VIPERDSP_SOURCES
     viper/effects/SoftwareLimiter.cpp
     viper/effects/SpeakerCorrection.cpp
     viper/effects/SpectrumExtend.cpp
+    viper/effects/StereoImager.cpp
     viper/effects/TubeSimulator.cpp
     viper/effects/VHE.cpp
     viper/effects/ViPERBass.cpp
