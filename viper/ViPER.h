@@ -47,11 +47,11 @@ public:
 
     void SetSamplingRate(uint32_t rate) { samplingRate = rate; }
     uint32_t GetSamplingRate() const { return samplingRate; }
-    uint64_t GetProcessTimeMs() const { return processTimeMs; }
+    uint64_t GetProcessedFrames() const { return processFrameCount; }
     uint32_t GetConvolverKernelID() { return convolver.GetKernelID(); }
 
 private:
-    uint64_t processTimeMs;
+    uint64_t processFrameCount;
     uint32_t samplingRate;
 
     // Effects

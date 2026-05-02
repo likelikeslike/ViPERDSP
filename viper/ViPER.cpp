@@ -5,7 +5,7 @@
 #include <cstring>
 
 ViPER::ViPER() :
-    processTimeMs(0),
+    processFrameCount(0),
     samplingRate(VIPER_DEFAULT_SAMPLING_RATE),
     adaptiveBuffer(AdaptiveBuffer(2, 4096)),
     waveBuffer(WaveBuffer(2, 4096)),
@@ -110,13 +110,11 @@ ViPER::ViPER() :
     this->frameScale = 1.0;
     this->leftPan = 1.0;
     this->rightPan = 1.0;
-    this->processTimeMs = 0;
+    this->processFrameCount = 0;
 }
 
 void ViPER::process(std::vector<float> &buffer, uint32_t size) {
-    auto now = std::chrono::system_clock::now();
-    auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(now);
-    this->processTimeMs = now_ms.time_since_epoch().count();
+    this->processFrameCount += size;
 
     uint32_t ret;
     float *tmpBuf;
