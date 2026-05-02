@@ -13,6 +13,7 @@
 #include "effects/LUFSTargeting.h"
 #include "effects/MultibandCompressor.h"
 #include "effects/PlaybackGain.h"
+#include "effects/PsychoacousticBass.h"
 #include "effects/Reverberation.h"
 #include "effects/SoftwareLimiter.h"
 #include "effects/SpeakerCorrection.h"
@@ -72,6 +73,7 @@ private:
     DynamicSystem dynamicSystem;
     ViPERBass viperBass;
     ViPERBassMono viperBassMono;
+    PsychoacousticBass psychoacousticBass;
     ViPERClarity viperClarity;
     DiffSurround diffSurround;
     Cure cure;

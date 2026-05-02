@@ -24,6 +24,7 @@ set(VIPERDSP_SOURCES
     viper/effects/LUFSTargeting.cpp
     viper/effects/MultibandCompressor.cpp
     viper/effects/PlaybackGain.cpp
+    viper/effects/PsychoacousticBass.cpp
     viper/effects/Reverberation.cpp
     viper/effects/SoftwareLimiter.cpp
     viper/effects/SpeakerCorrection.cpp

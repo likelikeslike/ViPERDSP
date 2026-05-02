@@ -76,6 +76,10 @@ ViPER::ViPER() :
     this->viperBassMono.SetSamplingRate(this->samplingRate);
     this->viperBassMono.Reset();
 
+    this->psychoacousticBass.SetEnable(false);
+    this->psychoacousticBass.SetSamplingRate(this->samplingRate);
+    this->psychoacousticBass.Reset();
+
     this->viperClarity.SetSamplingRate(this->samplingRate);
     this->viperClarity.Reset();
 
@@ -165,6 +169,7 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->stereoImager.Process(tmpBuf, tmpBufSize);
         this->diffSurround.Process(tmpBuf, tmpBufSize);
         this->reverberation.Process(tmpBuf, tmpBufSize);
+        this->psychoacousticBass.Process(tmpBuf, tmpBufSize);
         this->speakerCorrection.Process(tmpBuf, tmpBufSize);
         this->playbackGain.Process(tmpBuf, tmpBufSize);
         this->lufsTargeting.Process(tmpBuf, tmpBufSize);
@@ -1159,6 +1164,52 @@ void ViPER::DispatchCommand(
             break;
         }
 
+        // Psychoacoustic Bass
+        case PARAM_HP_PSYCHO_BASS_ENABLE:
+        case PARAM_SPK_PSYCHO_BASS_ENABLE: {
+            VIPER_LOGI(
+                "PsychoBass[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
+            );
+            this->psychoacousticBass.SetEnable(val1 != 0);
+            break;
+        }
+        case PARAM_HP_PSYCHO_BASS_CUTOFF:
+        case PARAM_SPK_PSYCHO_BASS_CUTOFF: {
+            VIPER_LOGI(
+                "PsychoBass[%s]: cutoff=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
+            this->psychoacousticBass.SetCutoff((uint32_t) val1);
+            break;
+        }
+        case PARAM_HP_PSYCHO_BASS_INTENSITY:
+        case PARAM_SPK_PSYCHO_BASS_INTENSITY: {
+            VIPER_LOGI(
+                "PsychoBass[%s]: intensity=%d", param < 0x10300 ? "HP" : "SPK", val1
+            );
+            this->psychoacousticBass.SetIntensity((uint32_t) val1);
+            break;
+        }
+        case PARAM_HP_PSYCHO_BASS_HARMONIC_ORDER:
+        case PARAM_SPK_PSYCHO_BASS_HARMONIC_ORDER: {
+            VIPER_LOGI(
+                "PsychoBass[%s]: harmonicOrder=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1
+            );
+            this->psychoacousticBass.SetHarmonicOrder((uint32_t) val1);
+            break;
+        }
+        case PARAM_HP_PSYCHO_BASS_ORIGINAL_LEVEL:
+        case PARAM_SPK_PSYCHO_BASS_ORIGINAL_LEVEL: {
+            VIPER_LOGI(
+                "PsychoBass[%s]: originalLevel=%d",
+                param < 0x10300 ? "HP" : "SPK",
+                val1
+            );
+            this->psychoacousticBass.SetOriginalBassLevel((uint32_t) val1);
+            break;
+        }
+
         // Speaker Correction
         case PARAM_SPK_SPEAKER_CORRECTION_ENABLE: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
@@ -1224,6 +1275,9 @@ void ViPER::resetAllEffects() {
 
     this->viperBassMono.SetSamplingRate(this->samplingRate);
     this->viperBassMono.Reset();
+
+    this->psychoacousticBass.SetSamplingRate(this->samplingRate);
+    this->psychoacousticBass.Reset();
 
     this->viperClarity.SetSamplingRate(this->samplingRate);
     this->viperClarity.Reset();
