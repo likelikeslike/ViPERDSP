@@ -54,6 +54,10 @@ ViPER::ViPER() :
     this->playbackGain.SetSamplingRate(this->samplingRate);
     this->playbackGain.Reset();
 
+    this->lufsTargeting.SetEnable(false);
+    this->lufsTargeting.SetSamplingRate(this->samplingRate);
+    this->lufsTargeting.Reset();
+
     this->fetCompressor.SetParameter(FETCompressor::ENABLE, 0.0);
     this->fetCompressor.SetSamplingRate(this->samplingRate);
     this->fetCompressor.Reset();
@@ -163,6 +167,7 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
         this->reverberation.Process(tmpBuf, tmpBufSize);
         this->speakerCorrection.Process(tmpBuf, tmpBufSize);
         this->playbackGain.Process(tmpBuf, tmpBufSize);
+        this->lufsTargeting.Process(tmpBuf, tmpBufSize);
         this->fetCompressor.Process(tmpBuf, tmpBufSize);
         this->multibandCompressor.Process(tmpBuf, tmpBufSize);
         this->dynamicSystem.Process(tmpBuf, tmpBufSize);
@@ -1126,6 +1131,34 @@ void ViPER::DispatchCommand(
             break;
         }
 
+        // LUFS Targeting
+        case PARAM_HP_LUFS_ENABLE:
+        case PARAM_SPK_LUFS_ENABLE: {
+            VIPER_LOGI("LUFS[%s]: %s",
+                param == PARAM_HP_LUFS_ENABLE ? "HP" : "SPK",
+                val1 ? "ON" : "OFF");
+            this->lufsTargeting.SetEnable(val1 != 0);
+            break;
+        }
+        case PARAM_HP_LUFS_TARGET:
+        case PARAM_SPK_LUFS_TARGET: {
+            VIPER_LOGI("LUFS[%s]: target=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->lufsTargeting.SetTargetLUFS((float) val1 / -10.0f);
+            break;
+        }
+        case PARAM_HP_LUFS_MAX_GAIN:
+        case PARAM_SPK_LUFS_MAX_GAIN: {
+            VIPER_LOGI("LUFS[%s]: maxGain=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->lufsTargeting.SetMaxGain((float) val1 / 10.0f);
+            break;
+        }
+        case PARAM_HP_LUFS_SPEED:
+        case PARAM_SPK_LUFS_SPEED: {
+            VIPER_LOGI("LUFS[%s]: speed=%d", param < 0x10300 ? "HP" : "SPK", val1);
+            this->lufsTargeting.SetSpeed(val1);
+            break;
+        }
+
         // Speaker Correction
         case PARAM_SPK_SPEAKER_CORRECTION_ENABLE: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
@@ -1173,6 +1206,9 @@ void ViPER::resetAllEffects() {
 
     this->playbackGain.SetSamplingRate(this->samplingRate);
     this->playbackGain.Reset();
+
+    this->lufsTargeting.SetSamplingRate(this->samplingRate);
+    this->lufsTargeting.Reset();
 
     this->fetCompressor.SetSamplingRate(this->samplingRate);
     this->fetCompressor.Reset();

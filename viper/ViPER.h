@@ -10,6 +10,7 @@
 #include "effects/DynamicSystem.h"
 #include "effects/FETCompressor.h"
 #include "effects/IIRFilter.h"
+#include "effects/LUFSTargeting.h"
 #include "effects/MultibandCompressor.h"
 #include "effects/PlaybackGain.h"
 #include "effects/Reverberation.h"
@@ -65,6 +66,7 @@ private:
     ColorfulMusic colorfulMusic;
     Reverberation reverberation;
     PlaybackGain playbackGain;
+    LUFSTargeting lufsTargeting;
     FETCompressor fetCompressor;
     MultibandCompressor multibandCompressor;
     DynamicSystem dynamicSystem;

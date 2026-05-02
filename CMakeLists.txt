@@ -21,6 +21,7 @@ set(VIPERDSP_SOURCES
     viper/effects/DynamicSystem.cpp
     viper/effects/FETCompressor.cpp
     viper/effects/IIRFilter.cpp
+    viper/effects/LUFSTargeting.cpp
     viper/effects/MultibandCompressor.cpp
     viper/effects/PlaybackGain.cpp
     viper/effects/Reverberation.cpp
