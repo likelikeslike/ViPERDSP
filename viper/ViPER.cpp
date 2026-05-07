@@ -113,6 +113,9 @@ ViPER::ViPER() :
 }
 
 void ViPER::process(std::vector<float> &buffer, uint32_t size) {
+    if (this->pendingEffectsReset.exchange(false, std::memory_order_acquire)) {
+        this->resetAllEffects();
+    }
     this->processFrameCount += size;
 
     uint32_t ret;
@@ -205,9 +208,11 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
     }
 
     memmove(
-        buffer.data() + (size - tmpBufSize) * 2, buffer.data(), tmpBufSize * sizeof(float)
+        buffer.data() + (size - tmpBufSize) * 2,
+        buffer.data(),
+        tmpBufSize * 2 * sizeof(float)
     );
-    memset(buffer.data(), 0, (size - tmpBufSize) * sizeof(float));
+    memset(buffer.data(), 0, (size - tmpBufSize) * 2 * sizeof(float));
 }
 
 void ViPER::DispatchCommand(
@@ -1319,6 +1324,10 @@ void ViPER::DispatchCommand(
             break;
         }
     }
+}
+
+void ViPER::requestEffectsReset() {
+    this->pendingEffectsReset.store(true, std::memory_order_release);
 }
 
 void ViPER::resetAllEffects() {

@@ -276,6 +276,10 @@ void PConvSingle::Reset() {
         memset(this->inputHistory[i], 0, this->fftSize * sizeof(float));
     }
     memset(this->overlapBuffer, 0, this->segmentSize * sizeof(float));
+    memset(this->fftBuffer, 0, this->fftSize * sizeof(float));
+    memset(this->accumBuffer, 0, this->fftSize * sizeof(float));
+    memset(this->monoBuffer, 0, this->segmentSize * sizeof(float));
+    memset(this->fftWork, 0, this->fftSize * sizeof(float));
     this->delayLineIndex = 0;
 }
 

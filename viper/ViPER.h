@@ -28,6 +28,7 @@
 #include "utils/AdaptiveBuffer.h"
 #include "utils/WaveBuffer.h"
 #include <array>
+#include <atomic>
 
 class ViPER {
 public:
@@ -43,6 +44,7 @@ public:
         uint32_t arrSize,
         signed char *arr
     );
+    void requestEffectsReset();
     void resetAllEffects();
 
     void SetSamplingRate(uint32_t rate) { samplingRate = rate; }
@@ -81,6 +83,8 @@ private:
     AnalogX analogX;
     SpeakerCorrection speakerCorrection;
     std::array<SoftwareLimiter, 2> softwareLimiters;
+
+    std::atomic<bool> pendingEffectsReset{false};
 
     float frameScale;
     float leftPan;
