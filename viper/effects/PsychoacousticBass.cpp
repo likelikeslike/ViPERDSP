@@ -71,6 +71,7 @@ void PsychoacousticBass::Process(float *samples, uint32_t size) {
 }
 
 void PsychoacousticBass::Reset() {
+    this->envelope = 1e-10;
     RefreshFilters();
     ApplyHarmonicCoeffs();
 }

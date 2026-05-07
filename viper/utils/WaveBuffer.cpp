@@ -120,6 +120,7 @@ float *WaveBuffer::PushZerosGetBuffer(uint32_t size) {
 
 void WaveBuffer::Reset() {
     this->index = 0;
+    std::fill(this->buffer.begin(), this->buffer.end(), 0.0f);
 }
 
 void WaveBuffer::SetBufferOffset(uint32_t offset) {

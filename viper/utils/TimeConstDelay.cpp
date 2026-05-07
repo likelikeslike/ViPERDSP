@@ -18,6 +18,6 @@ float TimeConstDelay::ProcessSample(float sample) {
 
 void TimeConstDelay::SetParameters(uint32_t samplingRate, float delay) {
     this->sampleCount = (uint32_t) ((float) samplingRate * delay);
-    this->samples.resize(this->sampleCount);
+    this->samples.assign(this->sampleCount, 0.0f);
     this->offset = 0;
 }

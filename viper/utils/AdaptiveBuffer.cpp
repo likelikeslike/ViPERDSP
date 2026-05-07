@@ -10,6 +10,7 @@ AdaptiveBuffer::AdaptiveBuffer(uint32_t channels, uint32_t length) {
 
 void AdaptiveBuffer::FlushBuffer() {
     this->offset = 0;
+    std::fill(this->buffer.begin(), this->buffer.end(), 0.0f);
 }
 
 uint32_t AdaptiveBuffer::GetBufferLength() const {
