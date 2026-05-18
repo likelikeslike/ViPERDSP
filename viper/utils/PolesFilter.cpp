@@ -28,6 +28,8 @@ void PolesFilter::UpdateCoeff() {
         (float) this->upper_freq * (float) M_PI / (float) this->samplingRate;
 }
 
+static constexpr float kAntiDenormal = 1e-25f;
+
 static inline void DoFilterSide(
     channel *side, float sample, float *out1, float *out2, float *out3
 ) {
@@ -36,15 +38,15 @@ static inline void DoFilterSide(
     side->in[1] = side->in[0];
     side->in[0] = sample;
 
-    side->x[0] += side->lower_angle * (sample - side->x[0]);
-    side->x[1] += side->lower_angle * (side->x[0] - side->x[1]);
-    side->x[2] += side->lower_angle * (side->x[1] - side->x[2]);
-    side->x[3] += side->lower_angle * (side->x[2] - side->x[3]);
+    side->x[0] += side->lower_angle * (sample - side->x[0]) + kAntiDenormal;
+    side->x[1] += side->lower_angle * (side->x[0] - side->x[1]) + kAntiDenormal;
+    side->x[2] += side->lower_angle * (side->x[1] - side->x[2]) + kAntiDenormal;
+    side->x[3] += side->lower_angle * (side->x[2] - side->x[3]) + kAntiDenormal;
 
-    side->y[0] += side->upper_angle * (sample - side->y[0]);
-    side->y[1] += side->upper_angle * (side->y[0] - side->y[1]);
-    side->y[2] += side->upper_angle * (side->y[1] - side->y[2]);
-    side->y[3] += side->upper_angle * (side->y[2] - side->y[3]);
+    side->y[0] += side->upper_angle * (sample - side->y[0]) + kAntiDenormal;
+    side->y[1] += side->upper_angle * (side->y[0] - side->y[1]) + kAntiDenormal;
+    side->y[2] += side->upper_angle * (side->y[1] - side->y[2]) + kAntiDenormal;
+    side->y[3] += side->upper_angle * (side->y[2] - side->y[3]) + kAntiDenormal;
 
     *out1 = side->x[3];
     *out2 = oldestSampleIn - side->y[3];
