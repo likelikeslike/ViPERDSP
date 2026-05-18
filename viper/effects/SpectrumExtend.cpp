@@ -41,6 +41,11 @@ void SpectrumExtend::Process(float *samples, uint32_t size) {
 }
 
 void SpectrumExtend::Reset() {
+    this->highpass[0].Reset();
+    this->highpass[1].Reset();
+    this->lowpass[0].Reset();
+    this->lowpass[1].Reset();
+
     this->highpass[0].RefreshFilter(
         MultiBiquad::FilterType::HIGH_PASS,
         0.0,

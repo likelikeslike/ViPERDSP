@@ -86,6 +86,17 @@ void MultibandCompressor::Reset() {
     for (uint32_t i = 0; i < MAX_BANDS; i++) {
         this->compressors[i].Reset();
     }
+
+    for (uint32_t i = 0; i < MAX_CROSSOVERS; i++) {
+        this->lowpassLA[i].Reset();
+        this->lowpassLB[i].Reset();
+        this->lowpassRA[i].Reset();
+        this->lowpassRB[i].Reset();
+        this->highpassLA[i].Reset();
+        this->highpassLB[i].Reset();
+        this->highpassRA[i].Reset();
+        this->highpassRB[i].Reset();
+    }
     ConfigureCrossovers();
 }
 

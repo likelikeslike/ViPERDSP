@@ -64,6 +64,7 @@ void DiffSurround::Reset() {
         (uint32_t) ((double) this->delayTime / 1000.0 * (double) this->samplingRate);
     this->buffers[this->reverse ? 0 : 1].PushZeros(delaySamples);
 
+    this->lpFilter.Reset();
     if (this->lpCutoff > 0.0f) {
         this->lpFilter.RefreshFilter(
             MultiBiquad::FilterType::LOW_PASS,

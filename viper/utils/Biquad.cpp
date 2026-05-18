@@ -52,11 +52,6 @@ void Biquad::SetBandPassParameter(float frequency, uint32_t samplingRate, float 
 }
 
 void Biquad::SetCoeffs(double a0, double a1, double a2, double b0, double b1, double b2) {
-    this->x2 = 0.0;
-    this->x1 = 0.0;
-    this->y2 = 0.0;
-    this->y1 = 0.0;
-
     this->a1 = -(a1 / a0);
     this->a2 = -(a2 / a0);
     this->b0 = b0 / a0;

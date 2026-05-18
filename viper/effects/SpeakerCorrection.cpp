@@ -34,6 +34,8 @@ void SpeakerCorrection::Reset() {
     this->lowPass[1].Reset();
     this->bandPass[0].Reset();
     this->bandPass[1].Reset();
+    this->highPass[0].Reset();
+    this->highPass[1].Reset();
 
     this->highPass[0].RefreshFilter(
         MultiBiquad::FilterType::HIGH_PASS, 0.0, 80.0, this->samplingRate, 1.0, false

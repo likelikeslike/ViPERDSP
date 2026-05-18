@@ -7,17 +7,16 @@ PolesFilter::PolesFilter() {
     this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
     this->lower_freq = 160;
     this->upper_freq = 8000;
-    UpdateCoeff();
+    Reset();
 }
 
 void PolesFilter::Reset() {
+    memset(&this->channels[0], 0, sizeof(channel));
+    memset(&this->channels[1], 0, sizeof(channel));
     UpdateCoeff();
 }
 
 void PolesFilter::UpdateCoeff() {
-    memset(&this->channels[0], 0, sizeof(channel));
-    memset(&this->channels[1], 0, sizeof(channel));
-
     this->channels[0].lower_angle =
         (float) this->lower_freq * (float) M_PI / (float) this->samplingRate;
     this->channels[1].lower_angle =

@@ -103,6 +103,9 @@ void DynamicEQ::Reset() {
         this->state[i].smoothedGainDb = 0.0;
         this->state[i].lastAppliedGainDb = 0.0f;
 
+        this->applyL[i].Reset();
+        this->applyR[i].Reset();
+
         RecalcAttackRelease(i);
         ConfigureApplicationFilter(i, 0.0f);
     }

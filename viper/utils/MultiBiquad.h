@@ -17,6 +17,7 @@ public:
 
     MultiBiquad();
 
+    void Reset();
     double ProcessSample(double sample);
     void RefreshFilter(
         FilterType type,

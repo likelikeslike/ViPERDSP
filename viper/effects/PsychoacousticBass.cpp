@@ -2,19 +2,55 @@
 #include "../constants.h"
 
 static const float HARMONIC_ORDER_2[10] = {
-    0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f,
+    1.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
 };
 
 static const float HARMONIC_ORDER_3[10] = {
-    0.0f, 0.7f, 0.3f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f,
+    0.7f,
+    0.3f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
 };
 
 static const float HARMONIC_ORDER_4[10] = {
-    0.0f, 0.5f, 0.3f, 0.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f,
+    0.5f,
+    0.3f,
+    0.2f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
 };
 
 static const float HARMONIC_ORDER_5[10] = {
-    0.0f, 0.4f, 0.25f, 0.2f, 0.15f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+    0.0f,
+    0.4f,
+    0.25f,
+    0.2f,
+    0.15f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
 };
 
 PsychoacousticBass::PsychoacousticBass() {
@@ -72,6 +108,10 @@ void PsychoacousticBass::Process(float *samples, uint32_t size) {
 
 void PsychoacousticBass::Reset() {
     this->envelope = 1e-10;
+    for (uint32_t ch = 0; ch < 2; ch++) {
+        this->lowpass[ch].Reset();
+        this->highpass[ch].Reset();
+    }
     RefreshFilters();
     ApplyHarmonicCoeffs();
 }
@@ -144,11 +184,21 @@ void PsychoacousticBass::RefreshFilters() {
 void PsychoacousticBass::ApplyHarmonicCoeffs() {
     const float *coeffs;
     switch (this->harmonicOrder) {
-        case 2: coeffs = HARMONIC_ORDER_2; break;
-        case 3: coeffs = HARMONIC_ORDER_3; break;
-        case 4: coeffs = HARMONIC_ORDER_4; break;
-        case 5: coeffs = HARMONIC_ORDER_5; break;
-        default: coeffs = HARMONIC_ORDER_3; break;
+        case 2:
+            coeffs = HARMONIC_ORDER_2;
+            break;
+        case 3:
+            coeffs = HARMONIC_ORDER_3;
+            break;
+        case 4:
+            coeffs = HARMONIC_ORDER_4;
+            break;
+        case 5:
+            coeffs = HARMONIC_ORDER_5;
+            break;
+        default:
+            coeffs = HARMONIC_ORDER_3;
+            break;
     }
     this->harmonics[0].Reset();
     this->harmonics[1].Reset();

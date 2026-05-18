@@ -80,6 +80,16 @@ void StereoImager::Process(float *samples, uint32_t size) {
 }
 
 void StereoImager::Reset() {
+    for (uint32_t i = 0; i < NUM_CROSSOVERS; i++) {
+        this->lowpassLA[i].Reset();
+        this->lowpassLB[i].Reset();
+        this->lowpassRA[i].Reset();
+        this->lowpassRB[i].Reset();
+        this->highpassLA[i].Reset();
+        this->highpassLB[i].Reset();
+        this->highpassRA[i].Reset();
+        this->highpassRB[i].Reset();
+    }
     ConfigureCrossovers();
 }
 
