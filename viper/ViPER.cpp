@@ -161,26 +161,26 @@ void ViPER::process(std::vector<float> &buffer, uint32_t size) {
     }
 
     if (tmpBufSize != 0) {
-        this->viperDdc.Process(tmpBuf, size);
-        this->spectrumExtend.Process(tmpBuf, size);
+        this->viperDdc.Process(tmpBuf, tmpBufSize);
+        this->spectrumExtend.Process(tmpBuf, tmpBufSize);
         this->iirFilter.Process(tmpBuf, tmpBufSize);
         this->dynamicEQ.Process(tmpBuf, tmpBufSize);
         this->colorfulMusic.Process(tmpBuf, tmpBufSize);
         this->stereoImager.Process(tmpBuf, tmpBufSize);
         this->diffSurround.Process(tmpBuf, tmpBufSize);
-        this->reverberation.Process(tmpBuf, tmpBufSize);
-        this->speakerCorrection.Process(tmpBuf, tmpBufSize);
         this->playbackGain.Process(tmpBuf, tmpBufSize);
         this->multibandCompressor.Process(tmpBuf, tmpBufSize);
         this->fetCompressor.Process(tmpBuf, tmpBufSize);
         this->dynamicSystem.Process(tmpBuf, tmpBufSize);
-        this->tubeSimulator.TubeProcess(tmpBuf, size);
+        this->tubeSimulator.TubeProcess(tmpBuf, tmpBufSize);
         this->psychoacousticBass.Process(tmpBuf, tmpBufSize);
         this->viperBass.Process(tmpBuf, tmpBufSize);
         this->viperBassMono.Process(tmpBuf, tmpBufSize);
         this->viperClarity.Process(tmpBuf, tmpBufSize);
         this->cure.Process(tmpBuf, tmpBufSize);
         this->analogX.Process(tmpBuf, tmpBufSize);
+        this->reverberation.Process(tmpBuf, tmpBufSize);
+        this->speakerCorrection.Process(tmpBuf, tmpBufSize);
         this->lufsTargeting.Process(tmpBuf, tmpBufSize);
 
         if (this->frameScale != 1.0) {
