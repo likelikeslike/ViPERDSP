@@ -4,67 +4,68 @@
 
 class FETCompressor {
 public:
-    enum Parameter {
-        ENABLE = 0,
-        THRESHOLD,
-        RATIO,
-        KNEE,
-        AUTO_KNEE,
-        GAIN,
-        AUTO_GAIN,
-        ATTACK,
-        AUTO_ATTACK,
-        RELEASE,
-        AUTO_RELEASE,
-        KNEE_MULTI,
-        MAX_ATTACK,
-        MAX_RELEASE,
-        CREST,
-        ADAPT,
-        NO_CLIP
-    };
-
     FETCompressor();
 
-    float GetMeter(int param_1);
-    float GetParameter(FETCompressor::Parameter parameter);
-    float GetParameterDefault(FETCompressor::Parameter parameter);
     void Process(float *samples, uint32_t size);
     double ProcessSidechain(double in);
     void Reset();
-    void SetParameter(FETCompressor::Parameter parameter, float value);
-    void SetSamplingRate(uint32_t samplingRate);
+
+    void SetEnable(bool enable);
+    void SetThreshold(float value);
+    void SetRatio(float value);
+    void SetKnee(float value);
+    void SetKneeAuto(bool enable);
+    void SetGain(float value);
+    void SetGainAuto(bool enable);
+    void SetAttack(float value);
+    void SetAttackAuto(bool enable);
+    void SetRelease(float value);
+    void SetReleaseAuto(bool enable);
+    void SetKneeMulti(float value);
+    void SetMaxAttack(float value);
+    void SetMaxRelease(float value);
+    void SetCrest(float value);
+    void SetAdapt(float value);
+    void SetNoClip(bool enable);
+
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    uint32_t samplingRate;
-    float parameters[17];
-    float smoothingCoeff;
-    bool enable;
-    bool autoKnee;
-    bool autoGain;
-    bool autoAttack;
-    bool autoRelease;
-    float releaseSmoothGR;
-    float attackSmoothGR;
-    float adaptiveGainState;
-    float smoothedThreshold;
-    float threshold;
-    float knee;
-    float smoothedGain;
-    float gain;
-    float ratio;
-    float runningPeak;
-    float runningRMS;
-    float attack1;
-    float attack2;
-    float release1;
-    float release2;
-    float kneeMulti;
-    float maxAttack;
-    float maxRelease;
-    float crest1;
-    float crest2;
-    float adapt1;
-    float adapt2;
-    bool noClip;
+    bool enable_;
+    bool auto_knee_;
+    bool auto_gain_;
+    bool auto_attack_;
+    bool auto_release_;
+    bool no_clip_;
+
+    uint32_t sampling_rate_;
+
+    float attack_raw_;
+    float release_raw_;
+    float crest_raw_;
+    float adapt_raw_;
+
+    float smoothing_coeff_;
+    float release_smooth_gr_;
+    float attack_smooth_gr_;
+    float adaptive_gain_state_;
+    float smoothed_threshold_;
+    float threshold_;
+    float knee_;
+    float smoothed_gain_;
+    float gain_;
+    float ratio_;
+    float running_peak_;
+    float running_rms_;
+    float attack1_;
+    float attack2_;
+    float release1_;
+    float release2_;
+    float knee_multi_;
+    float max_attack_;
+    float max_release_;
+    float crest1_;
+    float crest2_;
+    float adapt1_;
+    float adapt2_;
 };
