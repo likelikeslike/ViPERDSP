@@ -10,300 +10,155 @@
 #define COMMAND_CODE_GET 0x01
 #define COMMAND_CODE_SET 0x02
 
-// System params
-#define PARAM_SET_RESET_STATUS 0x10002
+namespace viper::params {
 
-// HP effect params: 0x10100 - 0x102FF
-#define PARAM_HP_CONVOLVER_ENABLE 0x10100
-#define PARAM_HP_CONVOLVER_SET_KERNEL 0x10101
-#define PARAM_HP_CONVOLVER_PREPARE_BUFFER 0x10102
-#define PARAM_HP_CONVOLVER_SET_BUFFER 0x10103
-#define PARAM_HP_CONVOLVER_COMMIT_BUFFER 0x10104
-#define PARAM_HP_CONVOLVER_CROSS_CHANNEL 0x10105
+constexpr int kParamResetAllEffects = 0x10101;
 
-#define PARAM_HP_DDC_ENABLE 0x10110
-#define PARAM_HP_DDC_COEFFICIENTS 0x10111
+constexpr int kParamMasterLimiterThreshold = 0x10110;
+constexpr int kParamMasterLimiterOutputVolume = 0x10111;
+constexpr int kParamMasterLimiterChannelPan = 0x10112;
 
-#define PARAM_HP_EQ_ENABLE 0x10120
-#define PARAM_HP_EQ_BAND_LEVEL 0x10121
-#define PARAM_HP_EQ_BAND_COUNT 0x10122
+constexpr int kParamPlaybackGainControlEnable = 0x10120;
+constexpr int kParamPlaybackGainControlStrength = 0x10121;
+constexpr int kParamPlaybackGainControlMaxGain = 0x10122;
+constexpr int kParamPlaybackGainControlOutputThreshold = 0x10123;
 
-#define PARAM_HP_REVERB_ENABLE 0x10130
-#define PARAM_HP_REVERB_ROOM_SIZE 0x10131
-#define PARAM_HP_REVERB_ROOM_WIDTH 0x10132
-#define PARAM_HP_REVERB_ROOM_DAMPENING 0x10133
-#define PARAM_HP_REVERB_ROOM_WET_SIGNAL 0x10134
-#define PARAM_HP_REVERB_ROOM_DRY_SIGNAL 0x10135
+constexpr int kParamLufsEnable = 0x10130;
+constexpr int kParamLufsTarget = 0x10131;
+constexpr int kParamLufsMaxGain = 0x10132;
+constexpr int kParamLufsSpeed = 0x10133;
 
-#define PARAM_HP_AGC_ENABLE 0x10140
-#define PARAM_HP_AGC_RATIO 0x10141
-#define PARAM_HP_AGC_VOLUME 0x10142
-#define PARAM_HP_AGC_MAX_SCALER 0x10143
+constexpr int kParamFetCompressorEnable = 0x10140;
+constexpr int kParamFetCompressorThreshold = 0x10141;
+constexpr int kParamFetCompressorRatio = 0x10142;
+constexpr int kParamFetCompressorKnee = 0x10143;
+constexpr int kParamFetCompressorKneeAuto = 0x10144;
+constexpr int kParamFetCompressorGain = 0x10145;
+constexpr int kParamFetCompressorGainAuto = 0x10146;
+constexpr int kParamFetCompressorAttack = 0x10147;
+constexpr int kParamFetCompressorAttackAuto = 0x10148;
+constexpr int kParamFetCompressorRelease = 0x10149;
+constexpr int kParamFetCompressorReleaseAuto = 0x1014A;
+constexpr int kParamFetCompressorKneeMulti = 0x1014B;
+constexpr int kParamFetCompressorMaxAttack = 0x1014C;
+constexpr int kParamFetCompressorMaxRelease = 0x1014D;
+constexpr int kParamFetCompressorCrest = 0x1014E;
+constexpr int kParamFetCompressorAdapt = 0x1014F;
+constexpr int kParamFetCompressorNoClip = 0x10150;
 
-#define PARAM_HP_DYNAMIC_SYSTEM_ENABLE 0x10150
-#define PARAM_HP_DYNAMIC_SYSTEM_X_COEFFICIENTS 0x10151
-#define PARAM_HP_DYNAMIC_SYSTEM_Y_COEFFICIENTS 0x10152
-#define PARAM_HP_DYNAMIC_SYSTEM_SIDE_GAIN 0x10153
-#define PARAM_HP_DYNAMIC_SYSTEM_STRENGTH 0x10154
+constexpr int kParamBassEnable = 0x10160;
+constexpr int kParamBassMode = 0x10161;
+constexpr int kParamBassFrequency = 0x10162;
+constexpr int kParamBassGain = 0x10163;
+constexpr int kParamBassAntiPop = 0x10164;
 
-#define PARAM_HP_BASS_ENABLE 0x10160
-#define PARAM_HP_BASS_MODE 0x10161
-#define PARAM_HP_BASS_FREQUENCY 0x10162
-#define PARAM_HP_BASS_GAIN 0x10163
-#define PARAM_HP_BASS_ANTI_POP 0x10168
+constexpr int kParamBassMonoEnable = 0x10170;
+constexpr int kParamBassMonoMode = 0x10171;
+constexpr int kParamBassMonoFrequency = 0x10172;
+constexpr int kParamBassMonoGain = 0x10173;
+constexpr int kParamBassMonoAntiPop = 0x10174;
 
-#define PARAM_HP_BASS_MONO_ENABLE 0x10164
-#define PARAM_HP_BASS_MONO_MODE 0x10165
-#define PARAM_HP_BASS_MONO_FREQUENCY 0x10166
-#define PARAM_HP_BASS_MONO_GAIN 0x10167
-#define PARAM_HP_BASS_MONO_ANTI_POP 0x10169
+constexpr int kParamPsychoacousticBassEnable = 0x10180;
+constexpr int kParamPsychoacousticBassCutoff = 0x10181;
+constexpr int kParamPsychoacousticBassIntensity = 0x10182;
+constexpr int kParamPsychoacousticBassHarmonicOrder = 0x10183;
+constexpr int kParamPsychoacousticBassOriginalLevel = 0x10184;
 
-#define PARAM_HP_CLARITY_ENABLE 0x10170
-#define PARAM_HP_CLARITY_MODE 0x10171
-#define PARAM_HP_CLARITY_GAIN 0x10172
+constexpr int kParamSpectrumExtensionEnable = 0x10190;
+constexpr int kParamSpectrumExtensionStrength = 0x10191;
+constexpr int kParamSpectrumExtensionExciter = 0x10192;
 
-#define PARAM_HP_HEADPHONE_SURROUND_ENABLE 0x10180
-#define PARAM_HP_HEADPHONE_SURROUND_STRENGTH 0x10181
+constexpr int kParamEqualizerEnable = 0x101A0;
+constexpr int kParamEqualizerBandLevel = 0x101A1;
+constexpr int kParamEqualizerBandCount = 0x101A2;
 
-#define PARAM_HP_SPECTRUM_EXTENSION_ENABLE 0x10190
-#define PARAM_HP_SPECTRUM_EXTENSION_BARK 0x10191
-#define PARAM_HP_SPECTRUM_EXTENSION_BARK_RECONSTRUCT 0x10192
+constexpr int kParamConvolverEnable = 0x101B0;
+constexpr int kParamConvolverSetKernel = 0x101B1;
+constexpr int kParamConvolverPrepareBuffer = 0x101B2;
+constexpr int kParamConvolverSetBuffer = 0x101B3;
+constexpr int kParamConvolverCommitBuffer = 0x101B4;
+constexpr int kParamConvolverCrossChannel = 0x101B5;
 
-#define PARAM_HP_FIELD_SURROUND_ENABLE 0x101A0
-#define PARAM_HP_FIELD_SURROUND_WIDENING 0x101A1
-#define PARAM_HP_FIELD_SURROUND_MID_IMAGE 0x101A2
-#define PARAM_HP_FIELD_SURROUND_DEPTH 0x101A3
+constexpr int kParamDdcEnable = 0x101C0;
+constexpr int kParamDdcCoefficients = 0x101C1;
 
-#define PARAM_HP_DIFF_SURROUND_ENABLE 0x101B0
-#define PARAM_HP_DIFF_SURROUND_DELAY 0x101B1
-#define PARAM_HP_DIFF_SURROUND_REVERSE 0x101B2
-#define PARAM_HP_DIFF_SURROUND_WET_DRY_MIX 0x101B3
-#define PARAM_HP_DIFF_SURROUND_LP_CUTOFF 0x101B4
+constexpr int kParamFieldSurroundEnable = 0x101D0;
+constexpr int kParamFieldSurroundWidening = 0x101D1;
+constexpr int kParamFieldSurroundMidImage = 0x101D2;
+constexpr int kParamFieldSurroundDepth = 0x101D3;
 
-#define PARAM_HP_CURE_ENABLE 0x101C0
-#define PARAM_HP_CURE_STRENGTH 0x101C1
+constexpr int kParamDiffSurroundEnable = 0x101E0;
+constexpr int kParamDiffSurroundDelay = 0x101E1;
+constexpr int kParamDiffSurroundReverse = 0x101E2;
+constexpr int kParamDiffSurroundWetDryMix = 0x101E3;
+constexpr int kParamDiffSurroundLpCutoff = 0x101E4;
 
-#define PARAM_HP_TUBE_SIMULATOR_ENABLE 0x101D0
+constexpr int kParamStereoImagerEnable = 0x101F0;
+constexpr int kParamStereoImagerLowWidth = 0x101F1;
+constexpr int kParamStereoImagerMidWidth = 0x101F2;
+constexpr int kParamStereoImagerHighWidth = 0x101F3;
+constexpr int kParamStereoImagerLowCrossover = 0x101F4;
+constexpr int kParamStereoImagerHighCrossover = 0x101F5;
 
-#define PARAM_HP_ANALOGX_ENABLE 0x101E0
-#define PARAM_HP_ANALOGX_MODE 0x101E1
+constexpr int kParamHeadphoneSurroundEnable = 0x10200;
+constexpr int kParamHeadphoneSurroundQuality = 0x10201;
 
-#define PARAM_HP_OUTPUT_VOLUME 0x101F0
-#define PARAM_HP_CHANNEL_PAN 0x101F1
-#define PARAM_HP_LIMITER 0x101F2
+constexpr int kParamReverbEnable = 0x10210;
+constexpr int kParamReverbRoomSize = 0x10211;
+constexpr int kParamReverbWidth = 0x10212;
+constexpr int kParamReverbDamp = 0x10213;
+constexpr int kParamReverbWet = 0x10214;
+constexpr int kParamReverbDry = 0x10215;
 
-#define PARAM_HP_FET_COMPRESSOR_ENABLE 0x10200
-#define PARAM_HP_FET_COMPRESSOR_THRESHOLD 0x10201
-#define PARAM_HP_FET_COMPRESSOR_RATIO 0x10202
-#define PARAM_HP_FET_COMPRESSOR_KNEE 0x10203
-#define PARAM_HP_FET_COMPRESSOR_AUTO_KNEE 0x10204
-#define PARAM_HP_FET_COMPRESSOR_GAIN 0x10205
-#define PARAM_HP_FET_COMPRESSOR_AUTO_GAIN 0x10206
-#define PARAM_HP_FET_COMPRESSOR_ATTACK 0x10207
-#define PARAM_HP_FET_COMPRESSOR_AUTO_ATTACK 0x10208
-#define PARAM_HP_FET_COMPRESSOR_RELEASE 0x10209
-#define PARAM_HP_FET_COMPRESSOR_AUTO_RELEASE 0x1020A
-#define PARAM_HP_FET_COMPRESSOR_KNEE_MULTI 0x1020B
-#define PARAM_HP_FET_COMPRESSOR_MAX_ATTACK 0x1020C
-#define PARAM_HP_FET_COMPRESSOR_MAX_RELEASE 0x1020D
-#define PARAM_HP_FET_COMPRESSOR_CREST 0x1020E
-#define PARAM_HP_FET_COMPRESSOR_ADAPT 0x1020F
-#define PARAM_HP_FET_COMPRESSOR_NO_CLIP 0x10210
+constexpr int kParamDynamicSystemEnable = 0x10220;
+constexpr int kParamDynamicSystemXCoefficients = 0x10221;
+constexpr int kParamDynamicSystemYCoefficients = 0x10222;
+constexpr int kParamDynamicSystemSideGain = 0x10223;
+constexpr int kParamDynamicSystemStrength = 0x10224;
 
-#define PARAM_HP_MULTIBAND_COMP_ENABLE 0x10230
-#define PARAM_HP_MULTIBAND_COMP_BAND_COUNT 0x10231
-#define PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ 0x10232
-#define PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD 0x10233
-#define PARAM_HP_MULTIBAND_COMP_BAND_RATIO 0x10234
-#define PARAM_HP_MULTIBAND_COMP_BAND_KNEE 0x10235
-#define PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE 0x10236
-#define PARAM_HP_MULTIBAND_COMP_BAND_GAIN 0x10237
-#define PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN 0x10238
-#define PARAM_HP_MULTIBAND_COMP_BAND_ATTACK 0x10239
-#define PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK 0x1023A
-#define PARAM_HP_MULTIBAND_COMP_BAND_RELEASE 0x1023B
-#define PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE 0x1023C
-#define PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI 0x1023D
-#define PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK 0x1023E
-#define PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE 0x1023F
-#define PARAM_HP_MULTIBAND_COMP_BAND_CREST 0x10240
-#define PARAM_HP_MULTIBAND_COMP_BAND_ADAPT 0x10241
-#define PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP 0x10242
-#define PARAM_HP_MULTIBAND_COMP_BAND_ENABLE 0x10243
+constexpr int kParamClarityEnable = 0x10230;
+constexpr int kParamClarityMode = 0x10231;
+constexpr int kParamClarityGain = 0x10232;
 
-#define PARAM_HP_STEREO_IMAGER_ENABLE 0x10250
-#define PARAM_HP_STEREO_IMAGER_LOW_WIDTH 0x10251
-#define PARAM_HP_STEREO_IMAGER_MID_WIDTH 0x10252
-#define PARAM_HP_STEREO_IMAGER_HIGH_WIDTH 0x10253
-#define PARAM_HP_STEREO_IMAGER_LOW_CROSSOVER 0x10254
-#define PARAM_HP_STEREO_IMAGER_HIGH_CROSSOVER 0x10255
+constexpr int kParamCureEnable = 0x10240;
+constexpr int kParamCureCrossfeedPreset = 0x10241;
 
-#define PARAM_HP_DYNAMIC_EQ_ENABLE 0x10260
-#define PARAM_HP_DYNAMIC_EQ_BAND_COUNT 0x10261
-#define PARAM_HP_DYNAMIC_EQ_BAND_FREQ 0x10262
-#define PARAM_HP_DYNAMIC_EQ_BAND_Q 0x10263
-#define PARAM_HP_DYNAMIC_EQ_BAND_GAIN 0x10264
-#define PARAM_HP_DYNAMIC_EQ_BAND_THRESHOLD 0x10265
-#define PARAM_HP_DYNAMIC_EQ_BAND_ATTACK 0x10266
-#define PARAM_HP_DYNAMIC_EQ_BAND_RELEASE 0x10267
-#define PARAM_HP_DYNAMIC_EQ_BAND_FILTER_TYPE 0x10268
+constexpr int kParamTubeSimulatorEnable = 0x10250;
 
-#define PARAM_HP_LUFS_ENABLE 0x10270
-#define PARAM_HP_LUFS_TARGET 0x10271
-#define PARAM_HP_LUFS_MAX_GAIN 0x10272
-#define PARAM_HP_LUFS_SPEED 0x10273
+constexpr int kParamAnalogXEnable = 0x10260;
+constexpr int kParamAnalogXMode = 0x10261;
 
-#define PARAM_HP_PSYCHO_BASS_ENABLE 0x10280
-#define PARAM_HP_PSYCHO_BASS_CUTOFF 0x10281
-#define PARAM_HP_PSYCHO_BASS_INTENSITY 0x10282
-#define PARAM_HP_PSYCHO_BASS_HARMONIC_ORDER 0x10283
-#define PARAM_HP_PSYCHO_BASS_ORIGINAL_LEVEL 0x10284
+constexpr int kParamSpeakerCorrectionEnable = 0x10270;
 
-// SPK effect params: 0x10300 - 0x104FF
-#define PARAM_SPK_CONVOLVER_ENABLE 0x10300
-#define PARAM_SPK_CONVOLVER_SET_KERNEL 0x10301
-#define PARAM_SPK_CONVOLVER_PREPARE_BUFFER 0x10302
-#define PARAM_SPK_CONVOLVER_SET_BUFFER 0x10303
-#define PARAM_SPK_CONVOLVER_COMMIT_BUFFER 0x10304
-#define PARAM_SPK_CONVOLVER_CROSS_CHANNEL 0x10305
+constexpr int kParamMultibandCompressorEnable = 0x10280;
+constexpr int kParamMultibandCompressorBandCount = 0x10281;
+constexpr int kParamMultibandCompressorCrossoverFrequency = 0x10282;
+constexpr int kParamMultibandCompressorBandThreshold = 0x10283;
+constexpr int kParamMultibandCompressorBandRatio = 0x10284;
+constexpr int kParamMultibandCompressorBandKnee = 0x10285;
+constexpr int kParamMultibandCompressorBandKneeAuto = 0x10286;
+constexpr int kParamMultibandCompressorBandGain = 0x10287;
+constexpr int kParamMultibandCompressorBandGainAuto = 0x10288;
+constexpr int kParamMultibandCompressorBandAttack = 0x10289;
+constexpr int kParamMultibandCompressorBandAttackAuto = 0x1028A;
+constexpr int kParamMultibandCompressorBandRelease = 0x1028B;
+constexpr int kParamMultibandCompressorBandReleaseAuto = 0x1028C;
+constexpr int kParamMultibandCompressorBandKneeMulti = 0x1028D;
+constexpr int kParamMultibandCompressorBandMaxAttack = 0x1028E;
+constexpr int kParamMultibandCompressorBandMaxRelease = 0x1028F;
+constexpr int kParamMultibandCompressorBandCrest = 0x10290;
+constexpr int kParamMultibandCompressorBandAdapt = 0x10291;
+constexpr int kParamMultibandCompressorBandNoClip = 0x10292;
+constexpr int kParamMultibandCompressorBandEnable = 0x10293;
 
-#define PARAM_SPK_DDC_ENABLE 0x10310
-#define PARAM_SPK_DDC_COEFFICIENTS 0x10311
+constexpr int kParamDynamicEqEnable = 0x102A0;
+constexpr int kParamDynamicEqBandCount = 0x102A1;
+constexpr int kParamDynamicEqBandFrequency = 0x102A2;
+constexpr int kParamDynamicEqBandQ = 0x102A3;
+constexpr int kParamDynamicEqBandGain = 0x102A4;
+constexpr int kParamDynamicEqBandThreshold = 0x102A5;
+constexpr int kParamDynamicEqBandAttack = 0x102A6;
+constexpr int kParamDynamicEqBandRelease = 0x102A7;
+constexpr int kParamDynamicEqBandFilterType = 0x102A8;
 
-#define PARAM_SPK_EQ_ENABLE 0x10320
-#define PARAM_SPK_EQ_BAND_LEVEL 0x10321
-#define PARAM_SPK_EQ_BAND_COUNT 0x10322
-
-#define PARAM_SPK_REVERB_ENABLE 0x10330
-#define PARAM_SPK_REVERB_ROOM_SIZE 0x10331
-#define PARAM_SPK_REVERB_ROOM_WIDTH 0x10332
-#define PARAM_SPK_REVERB_ROOM_DAMPENING 0x10333
-#define PARAM_SPK_REVERB_ROOM_WET_SIGNAL 0x10334
-#define PARAM_SPK_REVERB_ROOM_DRY_SIGNAL 0x10335
-
-#define PARAM_SPK_AGC_ENABLE 0x10340
-#define PARAM_SPK_AGC_RATIO 0x10341
-#define PARAM_SPK_AGC_VOLUME 0x10342
-#define PARAM_SPK_AGC_MAX_SCALER 0x10343
-
-#define PARAM_SPK_DYNAMIC_SYSTEM_ENABLE 0x10350
-#define PARAM_SPK_DYNAMIC_SYSTEM_X_COEFFICIENTS 0x10351
-#define PARAM_SPK_DYNAMIC_SYSTEM_Y_COEFFICIENTS 0x10352
-#define PARAM_SPK_DYNAMIC_SYSTEM_SIDE_GAIN 0x10353
-#define PARAM_SPK_DYNAMIC_SYSTEM_STRENGTH 0x10354
-
-#define PARAM_SPK_BASS_ENABLE 0x10360
-#define PARAM_SPK_BASS_MODE 0x10361
-#define PARAM_SPK_BASS_FREQUENCY 0x10362
-#define PARAM_SPK_BASS_GAIN 0x10363
-#define PARAM_SPK_BASS_ANTI_POP 0x10368
-
-#define PARAM_SPK_BASS_MONO_ENABLE 0x10364
-#define PARAM_SPK_BASS_MONO_MODE 0x10365
-#define PARAM_SPK_BASS_MONO_FREQUENCY 0x10366
-#define PARAM_SPK_BASS_MONO_GAIN 0x10367
-#define PARAM_SPK_BASS_MONO_ANTI_POP 0x10369
-
-#define PARAM_SPK_CLARITY_ENABLE 0x10370
-#define PARAM_SPK_CLARITY_MODE 0x10371
-#define PARAM_SPK_CLARITY_GAIN 0x10372
-
-#define PARAM_SPK_HEADPHONE_SURROUND_ENABLE 0x10380
-#define PARAM_SPK_HEADPHONE_SURROUND_STRENGTH 0x10381
-
-#define PARAM_SPK_SPECTRUM_EXTENSION_ENABLE 0x10390
-#define PARAM_SPK_SPECTRUM_EXTENSION_BARK 0x10391
-#define PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT 0x10392
-
-#define PARAM_SPK_FIELD_SURROUND_ENABLE 0x103A0
-#define PARAM_SPK_FIELD_SURROUND_WIDENING 0x103A1
-#define PARAM_SPK_FIELD_SURROUND_MID_IMAGE 0x103A2
-#define PARAM_SPK_FIELD_SURROUND_DEPTH 0x103A3
-
-#define PARAM_SPK_DIFF_SURROUND_ENABLE 0x103B0
-#define PARAM_SPK_DIFF_SURROUND_DELAY 0x103B1
-#define PARAM_SPK_DIFF_SURROUND_REVERSE 0x103B2
-#define PARAM_SPK_DIFF_SURROUND_WET_DRY_MIX 0x103B3
-#define PARAM_SPK_DIFF_SURROUND_LP_CUTOFF 0x103B4
-
-#define PARAM_SPK_CURE_ENABLE 0x103C0
-#define PARAM_SPK_CURE_STRENGTH 0x103C1
-
-#define PARAM_SPK_TUBE_SIMULATOR_ENABLE 0x103D0
-
-#define PARAM_SPK_ANALOGX_ENABLE 0x103E0
-#define PARAM_SPK_ANALOGX_MODE 0x103E1
-
-#define PARAM_SPK_OUTPUT_VOLUME 0x103F0
-#define PARAM_SPK_CHANNEL_PAN 0x103F1
-#define PARAM_SPK_LIMITER 0x103F2
-
-#define PARAM_SPK_FET_COMPRESSOR_ENABLE 0x10400
-#define PARAM_SPK_FET_COMPRESSOR_THRESHOLD 0x10401
-#define PARAM_SPK_FET_COMPRESSOR_RATIO 0x10402
-#define PARAM_SPK_FET_COMPRESSOR_KNEE 0x10403
-#define PARAM_SPK_FET_COMPRESSOR_AUTO_KNEE 0x10404
-#define PARAM_SPK_FET_COMPRESSOR_GAIN 0x10405
-#define PARAM_SPK_FET_COMPRESSOR_AUTO_GAIN 0x10406
-#define PARAM_SPK_FET_COMPRESSOR_ATTACK 0x10407
-#define PARAM_SPK_FET_COMPRESSOR_AUTO_ATTACK 0x10408
-#define PARAM_SPK_FET_COMPRESSOR_RELEASE 0x10409
-#define PARAM_SPK_FET_COMPRESSOR_AUTO_RELEASE 0x1040A
-#define PARAM_SPK_FET_COMPRESSOR_KNEE_MULTI 0x1040B
-#define PARAM_SPK_FET_COMPRESSOR_MAX_ATTACK 0x1040C
-#define PARAM_SPK_FET_COMPRESSOR_MAX_RELEASE 0x1040D
-#define PARAM_SPK_FET_COMPRESSOR_CREST 0x1040E
-#define PARAM_SPK_FET_COMPRESSOR_ADAPT 0x1040F
-#define PARAM_SPK_FET_COMPRESSOR_NO_CLIP 0x10410
-
-#define PARAM_SPK_SPEAKER_CORRECTION_ENABLE 0x10420
-
-// Multiband Compressor: 0x10430 - 0x1045F
-#define PARAM_SPK_MULTIBAND_COMP_ENABLE 0x10430
-#define PARAM_SPK_MULTIBAND_COMP_BAND_COUNT 0x10431
-#define PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ 0x10432
-#define PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD 0x10433
-#define PARAM_SPK_MULTIBAND_COMP_BAND_RATIO 0x10434
-#define PARAM_SPK_MULTIBAND_COMP_BAND_KNEE 0x10435
-#define PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE 0x10436
-#define PARAM_SPK_MULTIBAND_COMP_BAND_GAIN 0x10437
-#define PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN 0x10438
-#define PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK 0x10439
-#define PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK 0x1043A
-#define PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE 0x1043B
-#define PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE 0x1043C
-#define PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI 0x1043D
-#define PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK 0x1043E
-#define PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE 0x1043F
-#define PARAM_SPK_MULTIBAND_COMP_BAND_CREST 0x10440
-#define PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT 0x10441
-#define PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP 0x10442
-#define PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE 0x10443
-
-#define PARAM_SPK_STEREO_IMAGER_ENABLE 0x10450
-#define PARAM_SPK_STEREO_IMAGER_LOW_WIDTH 0x10451
-#define PARAM_SPK_STEREO_IMAGER_MID_WIDTH 0x10452
-#define PARAM_SPK_STEREO_IMAGER_HIGH_WIDTH 0x10453
-#define PARAM_SPK_STEREO_IMAGER_LOW_CROSSOVER 0x10454
-#define PARAM_SPK_STEREO_IMAGER_HIGH_CROSSOVER 0x10455
-
-#define PARAM_SPK_DYNAMIC_EQ_ENABLE 0x10460
-#define PARAM_SPK_DYNAMIC_EQ_BAND_COUNT 0x10461
-#define PARAM_SPK_DYNAMIC_EQ_BAND_FREQ 0x10462
-#define PARAM_SPK_DYNAMIC_EQ_BAND_Q 0x10463
-#define PARAM_SPK_DYNAMIC_EQ_BAND_GAIN 0x10464
-#define PARAM_SPK_DYNAMIC_EQ_BAND_THRESHOLD 0x10465
-#define PARAM_SPK_DYNAMIC_EQ_BAND_ATTACK 0x10466
-#define PARAM_SPK_DYNAMIC_EQ_BAND_RELEASE 0x10467
-#define PARAM_SPK_DYNAMIC_EQ_BAND_FILTER_TYPE 0x10468
-
-#define PARAM_SPK_LUFS_ENABLE 0x10470
-#define PARAM_SPK_LUFS_TARGET 0x10471
-#define PARAM_SPK_LUFS_MAX_GAIN 0x10472
-#define PARAM_SPK_LUFS_SPEED 0x10473
-
-#define PARAM_SPK_PSYCHO_BASS_ENABLE 0x10480
-#define PARAM_SPK_PSYCHO_BASS_CUTOFF 0x10481
-#define PARAM_SPK_PSYCHO_BASS_INTENSITY 0x10482
-#define PARAM_SPK_PSYCHO_BASS_HARMONIC_ORDER 0x10483
-#define PARAM_SPK_PSYCHO_BASS_ORIGINAL_LEVEL 0x10484
+} // namespace viper::params
