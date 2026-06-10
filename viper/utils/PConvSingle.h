@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 
 typedef struct PFFFT_Setup PFFFT_Setup;
 
@@ -9,37 +10,40 @@ public:
 
     void Reset();
 
-    int GetFFTSize();
-    int GetSegmentCount();
-    int GetSegmentSize();
-    bool InstanceUsable();
+    [[nodiscard]] uint32_t GetFFTSize() const;
+    [[nodiscard]] uint32_t GetSegmentCount() const;
+    [[nodiscard]] uint32_t GetSegmentSize() const;
+    [[nodiscard]] bool InstanceUsable() const;
 
     void Convolve(float *buffer);
     void ConvolveInterleaved(float *buffer, int channel);
     void ConvSegment(float *buffer, bool interleaved, int channel);
 
-    int LoadKernel(const float *kernel, int kernelSize, int segmentSize);
-    int LoadKernel(const float *kernel, float gain, int kernelSize, int segmentSize);
+    uint32_t LoadKernel(const float *kernel, uint32_t kernel_size, uint32_t segment_size);
+    uint32_t LoadKernel(
+        const float *kernel, float gain, uint32_t kernel_size, uint32_t segment_size
+    );
 
-    int ProcessKernel(const float *kernel, int kernelSize, int unused);
-    int ProcessKernel(const float *kernel, float gain, int kernelSize, int unused);
+    uint32_t ProcessKernel(const float *kernel, uint32_t kernel_size);
+    uint32_t ProcessKernel(const float *kernel, float gain, uint32_t kernel_size);
 
     void ReleaseResources();
     void UnloadKernel();
 
-    bool instanceUsable;
-    int segmentCount;
-    int segmentSize;
-
 private:
-    int fftSize;
-    PFFFT_Setup *fftSetup;
-    float *fftWork;
-    float **filterSegments;
-    float **inputHistory;
-    float *overlapBuffer;
-    float *fftBuffer;
-    float *accumBuffer;
-    float *monoBuffer;
-    int delayLineIndex;
+    bool instance_usable_;
+
+    uint32_t segment_count_;
+    uint32_t segment_size_;
+    uint32_t fft_size_;
+    uint32_t delay_line_index_;
+
+    PFFFT_Setup *fft_setup_;
+    float *fft_work_;
+    float **filter_segments_;
+    float **input_history_;
+    float *overlap_buffer_;
+    float *fft_buffer_;
+    float *accum_buffer_;
+    float *mono_buffer_;
 };

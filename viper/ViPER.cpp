@@ -527,8 +527,8 @@ void ViPER::DispatchRawParam(
             break;
         }
         case kParamConvolverSetBuffer: {
-            VIPER_LOGI("Convolver: SetBuffer offset=%d size=%u", val1, arr_size);
-            convolver_.SetKernelBuffer(val1, reinterpret_cast<float *>(arr), arr_size);
+            VIPER_LOGI("Convolver: SetBuffer size=%u", arr_size);
+            convolver_.SetKernelBuffer(reinterpret_cast<float *>(arr), arr_size);
             break;
         }
         case kParamConvolverCommitBuffer: {

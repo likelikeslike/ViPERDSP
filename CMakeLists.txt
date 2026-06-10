@@ -75,6 +75,6 @@ target_include_directories(ViPERDSP PUBLIC
 
 target_compile_options(ViPERDSP PRIVATE -O3 -flto)
 
-if(ANDROID)
+if (ANDROID)
     target_link_libraries(ViPERDSP log)
-endif()
+endif ()
