@@ -4,9 +4,6 @@
 #include "../utils/Polyphase.h"
 #include "../utils/Subwoofer.h"
 #include "../utils/WaveBuffer.h"
-#include <cstdint>
-
-// Iscle: Verified with the latest version at 13/12/2022
 
 class ViPERBass {
 public:
@@ -20,23 +17,29 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
-    void SetBassFactor(float bassFactor);
+    void SetBassFactor(float bass_factor);
     void SetEnable(bool enable);
-    void SetProcessMode(ProcessMode processMode);
-    void SetSamplingRate(uint32_t samplingRate);
+    void SetProcessMode(ProcessMode mode);
+    void SetSamplingRate(uint32_t sampling_rate);
     void SetSpeaker(uint32_t speaker);
-    void SetAntiPop(bool enabled);
+    void SetAntiPop(bool enable);
 
 private:
-    Polyphase polyphase;
-    Biquad biquad[2];
-    Subwoofer subwoofer;
-    WaveBuffer waveBuffer;
-    bool enable;
-    ProcessMode processMode;
-    uint32_t samplingRate;
-    float samplingRatePeriod;
-    float antiPop;
-    uint32_t speaker;
-    float bassFactor;
+    bool enable_;
+
+    ProcessMode process_mode_;
+
+    uint32_t sampling_rate_;
+    uint32_t speaker_;
+
+    float sampling_rate_period_;
+    float anti_pop_;
+    float bass_factor_;
+    float bass_factor_smoothed_;
+    float smoothing_coeff_;
+
+    Polyphase polyphase_;
+    Biquad biquad_[2];
+    Subwoofer subwoofer_;
+    WaveBuffer wave_buffer_;
 };
