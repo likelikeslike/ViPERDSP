@@ -2,28 +2,28 @@
 
 #include "../utils/Crossfeed.h"
 #include "../utils/PassFilter.h"
-#include <cstdint>
-
-// Iscle: Verified with the latest version at 13/12/2022
 
 class Cure {
 public:
     Cure();
 
-    uint16_t GetCutoff();
-    float GetFeedback();
-    float GetLevelDelay();
-    struct Crossfeed::Preset GetPreset();
     void Process(float *buffer, uint32_t size);
     void Reset();
-    void SetCutoff(uint16_t cutoff);
-    void SetEnable(bool enabled);
-    void SetFeedback(float feedback);
-    void SetPreset(struct Crossfeed::Preset preset);
-    void SetSamplingRate(uint32_t samplingRate);
+
+    [[nodiscard]] uint32_t GetCutoff() const;
+    [[nodiscard]] float GetFeedback() const;
+    [[nodiscard]] float GetLevelDelay() const;
+    [[nodiscard]] Crossfeed::Preset GetPreset() const;
+
+    void SetEnable(bool enable);
+    void SetCutoff(uint32_t value);
+    void SetFeedback(float value);
+    void SetPreset(Crossfeed::Preset preset);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    Crossfeed crossfeed;
-    PassFilter passFilter;
-    bool enabled;
+    bool enabled_;
+
+    Crossfeed crossfeed_;
+    PassFilter pass_filter_;
 };

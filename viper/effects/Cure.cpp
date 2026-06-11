@@ -1,62 +1,60 @@
 #include "Cure.h"
 
-// Iscle: Verified with the latest version at 13/12/2022
-
-Cure::Cure() {
-    this->enabled = false;
+Cure::Cure() :
+    enabled_(false) {
     Reset();
 }
 
-uint16_t Cure::GetCutoff() {
-    return this->crossfeed.GetCutoff();
-}
+void Cure::Process(float *buffer, const uint32_t size) {
+    if (!enabled_) return;
 
-float Cure::GetFeedback() {
-    return this->crossfeed.GetFeedback();
-}
-
-float Cure::GetLevelDelay() {
-    return this->crossfeed.GetLevelDelay();
-}
-
-struct Crossfeed::Preset Cure::GetPreset() {
-    return this->crossfeed.GetPreset();
-}
-
-void Cure::Process(float *buffer, uint32_t size) {
-    if (!this->enabled) return;
-
-    this->crossfeed.ProcessFrames(buffer, size);
-    this->passFilter.ProcessFrames(buffer, size);
+    crossfeed_.ProcessFrames(buffer, size);
+    pass_filter_.ProcessFrames(buffer, size);
 }
 
 void Cure::Reset() {
-    this->crossfeed.Reset();
-    this->passFilter.Reset();
+    crossfeed_.Reset();
+    pass_filter_.Reset();
 }
 
-void Cure::SetCutoff(uint16_t cutoff) {
-    this->crossfeed.SetCutoff(cutoff);
+uint32_t Cure::GetCutoff() const {
+    return crossfeed_.GetCutoff();
 }
 
-void Cure::SetEnable(bool enabled) {
-    if (this->enabled != enabled) {
-        if (enabled) {
+float Cure::GetFeedback() const {
+    return crossfeed_.GetFeedback();
+}
+
+float Cure::GetLevelDelay() const {
+    return crossfeed_.GetLevelDelay();
+}
+
+Crossfeed::Preset Cure::GetPreset() const {
+    return crossfeed_.GetPreset();
+}
+
+void Cure::SetEnable(const bool enable) {
+    if (enabled_ != enable) {
+        if (enable) {
             Reset();
         }
-        this->enabled = enabled;
+        enabled_ = enable;
     }
 }
 
-void Cure::SetFeedback(float feedback) {
-    this->crossfeed.SetFeedback(feedback);
+void Cure::SetCutoff(const uint32_t value) {
+    crossfeed_.SetCutoff(value);
 }
 
-void Cure::SetPreset(struct Crossfeed::Preset preset) {
-    this->crossfeed.SetPreset(preset);
+void Cure::SetFeedback(const float value) {
+    crossfeed_.SetFeedback(value);
 }
 
-void Cure::SetSamplingRate(uint32_t samplingRate) {
-    this->crossfeed.SetSamplingRate(samplingRate);
-    this->passFilter.SetSamplingRate(samplingRate);
+void Cure::SetPreset(const Crossfeed::Preset preset) {
+    crossfeed_.SetPreset(preset);
+}
+
+void Cure::SetSamplingRate(const uint32_t sampling_rate) {
+    crossfeed_.SetSamplingRate(sampling_rate);
+    pass_filter_.SetSamplingRate(sampling_rate);
 }
