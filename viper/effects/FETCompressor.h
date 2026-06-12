@@ -7,7 +7,6 @@ public:
     FETCompressor();
 
     void Process(float *samples, uint32_t size);
-    double ProcessSidechain(double in);
     void Reset();
 
     void SetEnable(bool enable);
@@ -27,7 +26,6 @@ public:
     void SetCrest(float value);
     void SetAdapt(float value);
     void SetNoClip(bool enable);
-
     void SetSamplingRate(uint32_t sampling_rate);
 
 private:
@@ -68,4 +66,6 @@ private:
     float crest2_;
     float adapt1_;
     float adapt2_;
+
+    double ProcessSidechain(double in);
 };

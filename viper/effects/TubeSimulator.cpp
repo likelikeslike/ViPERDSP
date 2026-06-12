@@ -1,33 +1,31 @@
 #include "TubeSimulator.h"
 
-// Iscle: Verified with the latest version at 13/12/2022
-
 TubeSimulator::TubeSimulator() :
-    acc({0.0, 0.0}),
-    enable(false) {}
+    enable_(false),
+    acc_({0.0, 0.0}) {}
 
-void TubeSimulator::Reset() {
-    this->acc[0] = 0.0;
-    this->acc[1] = 0.0;
-    this->enable = false;
-}
+void TubeSimulator::Process(float *buffer, const uint32_t size) {
+    if (!enable_) return;
 
-void TubeSimulator::SetEnable(bool enable) {
-    if (this->enable != enable) {
-        if (!this->enable) {
-            Reset();
-        }
-        this->enable = enable;
+    for (uint32_t i = 0; i < size; i++) {
+        acc_[0] = (acc_[0] + buffer[i * 2]) / 2.0;
+        acc_[1] = (acc_[1] + buffer[i * 2 + 1]) / 2.0;
+        buffer[i * 2] = static_cast<float>(acc_[0]);
+        buffer[i * 2 + 1] = static_cast<float>(acc_[1]);
     }
 }
 
-void TubeSimulator::TubeProcess(float *buffer, uint32_t size) {
-    if (!this->enable) return;
+void TubeSimulator::Reset() {
+    acc_[0] = 0.0;
+    acc_[1] = 0.0;
+    enable_ = false;
+}
 
-    for (uint32_t i = 0; i < size; i++) {
-        this->acc[0] = (this->acc[0] + buffer[i * 2]) / 2.0;
-        this->acc[1] = (this->acc[1] + buffer[i * 2 + 1]) / 2.0;
-        buffer[i * 2] = (float) this->acc[0];
-        buffer[i * 2 + 1] = (float) this->acc[1];
+void TubeSimulator::SetEnable(const bool enable) {
+    if (enable_ != enable) {
+        if (!enable_) {
+            Reset();
+        }
+        enable_ = enable;
     }
 }

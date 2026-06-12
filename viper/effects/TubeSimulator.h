@@ -1,19 +1,18 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
-
-// Iscle: Verified with the latest version at 13/12/2022
 
 class TubeSimulator {
 public:
     TubeSimulator();
 
+    void Process(float *buffer, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void TubeProcess(float *buffer, uint32_t size);
 
 private:
-    std::array<double, 2> acc;
-    bool enable;
+    bool enable_;
+
+    std::array<double, 2> acc_;
 };

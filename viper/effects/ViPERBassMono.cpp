@@ -6,7 +6,7 @@ ViPERBassMono::ViPERBassMono() :
     enable_(false),
     process_mode_(NATURAL_BASS),
     sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
-    speaker_(60),
+    frequency_(60),
     sampling_rate_period_(1.0f / VIPER_DEFAULT_SAMPLING_RATE),
     anti_pop_(0.0f),
     bass_factor_(0.0f),
@@ -15,7 +15,7 @@ ViPERBassMono::ViPERBassMono() :
     polyphase_(2),
     wave_buffer_(1, 4096) {
     biquad_.Reset();
-    biquad_.SetLowPassParameter(static_cast<float>(speaker_), sampling_rate_, 0.53f);
+    biquad_.SetLowPassParameter(static_cast<float>(frequency_), sampling_rate_, 0.53f);
     subwoofer_.SetBassGain(sampling_rate_, 0.0f);
     Reset();
 }
@@ -39,7 +39,7 @@ void ViPERBassMono::Process(float *samples, const uint32_t size) {
     auto sat_mix = [](float &l, float &r) {
         const float a_l = std::fabs(l);
         const float a_r = std::fabs(r);
-        const float drive = (a_l > a_r) ? a_l : a_r;
+        const float drive = a_l > a_r ? a_l : a_r;
         if (drive <= KNEE) return;
         const float over = drive - KNEE;
         const float shaped = KNEE + over / std::sqrt(1.0f + over * over);
@@ -108,19 +108,12 @@ void ViPERBassMono::Reset() {
     wave_buffer_.Reset();
     wave_buffer_.PushZeros(polyphase_.GetLatency());
     subwoofer_.SetBassGain(sampling_rate_, bass_factor_ * 2.5f);
-    biquad_.SetLowPassParameter(static_cast<float>(speaker_), sampling_rate_, 0.53f);
+    biquad_.SetLowPassParameter(static_cast<float>(frequency_), sampling_rate_, 0.53f);
     sampling_rate_period_ = 1.0f / static_cast<float>(sampling_rate_);
     anti_pop_ = 0.0f;
     smoothing_coeff_ =
         1.0f - std::exp(-1.0f / (0.030f * static_cast<float>(sampling_rate_)));
     bass_factor_smoothed_ = bass_factor_;
-}
-
-void ViPERBassMono::SetBassFactor(const float bass_factor) {
-    if (bass_factor_ != bass_factor) {
-        bass_factor_ = bass_factor;
-        subwoofer_.SetBassGain(sampling_rate_, bass_factor_ * 2.5f);
-    }
 }
 
 void ViPERBassMono::SetEnable(const bool enable) {
@@ -137,20 +130,19 @@ void ViPERBassMono::SetProcessMode(const ProcessMode mode) {
     }
 }
 
-void ViPERBassMono::SetSamplingRate(const uint32_t sampling_rate) {
-    if (sampling_rate_ != sampling_rate) {
-        sampling_rate_ = sampling_rate;
-        sampling_rate_period_ = 1.0f / static_cast<float>(sampling_rate);
-        polyphase_.SetSamplingRate(sampling_rate_);
-        biquad_.SetLowPassParameter(static_cast<float>(speaker_), sampling_rate_, 0.53f);
+void ViPERBassMono::SetBassFactor(const float value) {
+    if (bass_factor_ != value) {
+        bass_factor_ = value;
         subwoofer_.SetBassGain(sampling_rate_, bass_factor_ * 2.5f);
     }
 }
 
-void ViPERBassMono::SetSpeaker(const uint32_t speaker) {
-    if (speaker_ != speaker) {
-        speaker_ = speaker;
-        biquad_.SetLowPassParameter(static_cast<float>(speaker_), sampling_rate_, 0.53f);
+void ViPERBassMono::SetFrequency(const uint32_t value) {
+    if (frequency_ != value) {
+        frequency_ = value;
+        biquad_.SetLowPassParameter(
+            static_cast<float>(frequency_), sampling_rate_, 0.53f
+        );
     }
 }
 
@@ -159,5 +151,17 @@ void ViPERBassMono::SetAntiPop(const bool enable) {
         anti_pop_ = 0.0f;
     } else {
         anti_pop_ = 1.0f;
+    }
+}
+
+void ViPERBassMono::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
+        sampling_rate_period_ = 1.0f / static_cast<float>(sampling_rate);
+        polyphase_.SetSamplingRate(sampling_rate_);
+        biquad_.SetLowPassParameter(
+            static_cast<float>(frequency_), sampling_rate_, 0.53f
+        );
+        subwoofer_.SetBassGain(sampling_rate_, bass_factor_ * 2.5f);
     }
 }

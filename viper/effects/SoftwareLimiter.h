@@ -8,6 +8,7 @@ public:
 
     float Process(float sample);
     void Reset();
+
     void SetGate(float gate);
 
 private:

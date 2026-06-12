@@ -2,7 +2,6 @@
 
 #include "../utils/MultiBiquad.h"
 #include <array>
-#include <cstdint>
 
 class DynamicEQ {
 public:
@@ -12,10 +11,11 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t sampling_rate);
     void SetBandCount(uint32_t count);
-    // void SetBandParam(uint32_t band, int paramType, float value);
+    void SetSamplingRate(uint32_t sampling_rate);
+
     void SetBandFrequency(uint32_t band, float value);
     void SetBandGain(uint32_t band, float value);
     void SetBandQ(uint32_t band, float value);

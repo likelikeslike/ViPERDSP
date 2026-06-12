@@ -50,8 +50,25 @@ void Cure::SetFeedback(const float value) {
     crossfeed_.SetFeedback(value);
 }
 
-void Cure::SetPreset(const Crossfeed::Preset preset) {
-    crossfeed_.SetPreset(preset);
+void Cure::SetPreset(const uint32_t value) {
+    switch (value) {
+        case 0: {
+            constexpr Crossfeed::Preset preset = {.cutoff = 650, .feedback = 95};
+            crossfeed_.SetPreset(preset);
+            break;
+        }
+        case 1: {
+            constexpr Crossfeed::Preset preset = {.cutoff = 700, .feedback = 60};
+            crossfeed_.SetPreset(preset);
+            break;
+        }
+        case 2: {
+            constexpr Crossfeed::Preset preset = {.cutoff = 700, .feedback = 45};
+            crossfeed_.SetPreset(preset);
+            break;
+        }
+        default:;
+    }
 }
 
 void Cure::SetSamplingRate(const uint32_t sampling_rate) {

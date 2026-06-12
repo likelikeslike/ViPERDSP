@@ -2,43 +2,44 @@
 
 #include "../utils/MultiBiquad.h"
 #include <array>
-#include <cstdint>
 #include <vector>
 
 class StereoImager {
 public:
-    static constexpr uint32_t NUM_BANDS = 3;
-    static constexpr uint32_t NUM_CROSSOVERS = 2;
+    static constexpr uint32_t kNumBands = 3;
+    static constexpr uint32_t kNumCrossovers = 2;
 
     StereoImager();
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t samplingRate);
-    void SetLowWidth(float widthPercent);
-    void SetMidWidth(float widthPercent);
-    void SetHighWidth(float widthPercent);
-    void SetLowCrossover(float frequency);
-    void SetHighCrossover(float frequency);
+    void SetLowWidth(float value);
+    void SetMidWidth(float value);
+    void SetHighWidth(float value);
+    void SetLowCrossover(float value);
+    void SetHighCrossover(float value);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
+    bool enable_;
+
+    uint32_t sampling_rate_;
+
+    std::array<float, kNumBands> band_widths_;
+    std::array<float, kNumCrossovers> crossover_freqs_;
+
+    std::array<MultiBiquad, kNumCrossovers> lowpass_la_;
+    std::array<MultiBiquad, kNumCrossovers> lowpass_lb_;
+    std::array<MultiBiquad, kNumCrossovers> lowpass_ra_;
+    std::array<MultiBiquad, kNumCrossovers> lowpass_rb_;
+    std::array<MultiBiquad, kNumCrossovers> highpass_la_;
+    std::array<MultiBiquad, kNumCrossovers> highpass_lb_;
+    std::array<MultiBiquad, kNumCrossovers> highpass_ra_;
+    std::array<MultiBiquad, kNumCrossovers> highpass_rb_;
+
+    std::array<std::vector<float>, kNumBands> band_buffers_;
+
     void ConfigureCrossovers();
-
-    bool enable;
-    uint32_t samplingRate;
-
-    std::array<float, NUM_BANDS> bandWidths;
-    std::array<float, NUM_CROSSOVERS> crossoverFreqs;
-
-    std::array<MultiBiquad, NUM_CROSSOVERS> lowpassLA;
-    std::array<MultiBiquad, NUM_CROSSOVERS> lowpassLB;
-    std::array<MultiBiquad, NUM_CROSSOVERS> lowpassRA;
-    std::array<MultiBiquad, NUM_CROSSOVERS> lowpassRB;
-    std::array<MultiBiquad, NUM_CROSSOVERS> highpassLA;
-    std::array<MultiBiquad, NUM_CROSSOVERS> highpassLB;
-    std::array<MultiBiquad, NUM_CROSSOVERS> highpassRA;
-    std::array<MultiBiquad, NUM_CROSSOVERS> highpassRB;
-
-    std::array<std::vector<float>, NUM_BANDS> bandBuffers;
 };

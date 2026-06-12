@@ -3,7 +3,6 @@
 #include "../utils/Harmonic.h"
 #include "../utils/MultiBiquad.h"
 #include <array>
-#include <cstdint>
 
 class SpectrumExtend {
 public:
@@ -11,17 +10,21 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
     void SetExciter(float value);
-    void SetReferenceFrequency(uint32_t freq);
-    void SetSamplingRate(uint32_t samplingRate);
+    void SetReferenceFrequency(uint32_t value);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    std::array<MultiBiquad, 2> highpass;
-    std::array<MultiBiquad, 2> lowpass;
-    std::array<Harmonic, 2> harmonics;
-    bool enabled;
-    uint32_t samplingRate;
-    uint32_t referenceFreq;
-    float exciter;
+    bool enabled_;
+
+    uint32_t sampling_rate_;
+    uint32_t reference_freq_;
+
+    float exciter_;
+
+    std::array<MultiBiquad, 2> highpass_;
+    std::array<MultiBiquad, 2> lowpass_;
+    std::array<Harmonic, 2> harmonics_;
 };

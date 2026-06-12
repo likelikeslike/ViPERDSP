@@ -20,23 +20,6 @@ PlaybackGain::PlaybackGain() :
     biquad2_.SetBandPassParameter(2200.0f, sampling_rate_, 0.33f);
 }
 
-double PlaybackGain::AnalyseWave(const float *samples, const uint32_t size) {
-    double tmp_l = 0.0;
-    double tmp_r = 0.0;
-
-    for (uint32_t i = 0; i < size * 2; i += 2) {
-        const double tmp_l2 = biquad1_.ProcessSample(samples[i]);
-        tmp_l += tmp_l2 * tmp_l2;
-
-        const double tmp_r2 = biquad2_.ProcessSample(samples[i + 1]);
-        tmp_r += tmp_r2 * tmp_r2;
-    }
-
-    const double tmp = std::fmax(tmp_l, tmp_r);
-
-    return tmp / static_cast<double>(size);
-}
-
 void PlaybackGain::Process(float *samples, const uint32_t size) {
     if (!enable_) return;
     if (size == 0) return;
@@ -55,9 +38,9 @@ void PlaybackGain::Process(float *samples, const uint32_t size) {
             ramp_progress_ = ramp_frames_;
         }
     }
-    const double ramp = (ramp_frames_ == 0) ? 1.0
-                                            : static_cast<double>(ramp_progress_)
-                                                  / static_cast<double>(ramp_frames_);
+    const double ramp = ramp_frames_ == 0 ? 1.0
+                                          : static_cast<double>(ramp_progress_)
+                                                / static_cast<double>(ramp_frames_);
 
     const double b = a * log_coeff_ * 10.0 + 23.0;
     const double c = ramp * (b * ratio2_ - b);
@@ -73,7 +56,7 @@ void PlaybackGain::Process(float *samples, const uint32_t size) {
     const double target = e * volume_;
 
     for (int ch = 0; ch < 2; ch++) {
-        float &gain = (ch == 0) ? current_gain_l_ : current_gain_r_;
+        float &gain = ch == 0 ? current_gain_l_ : current_gain_r_;
         double g = (target - gain) / f;
         if (g >= 0.0) {
             g *= 0.0625;
@@ -116,6 +99,10 @@ void PlaybackGain::SetRatio(const float ratio) {
     ratio2_ = 1.0f / ratio1_;
 }
 
+void PlaybackGain::SetVolume(const float volume) {
+    volume_ = volume;
+}
+
 void PlaybackGain::SetSamplingRate(const uint32_t sampling_rate) {
     if (sampling_rate_ != sampling_rate) {
         sampling_rate_ = sampling_rate;
@@ -124,6 +111,19 @@ void PlaybackGain::SetSamplingRate(const uint32_t sampling_rate) {
     }
 }
 
-void PlaybackGain::SetVolume(const float volume) {
-    volume_ = volume;
+double PlaybackGain::AnalyseWave(const float *samples, const uint32_t size) {
+    double tmp_l = 0.0;
+    double tmp_r = 0.0;
+
+    for (uint32_t i = 0; i < size * 2; i += 2) {
+        const double tmp_l2 = biquad1_.ProcessSample(samples[i]);
+        tmp_l += tmp_l2 * tmp_l2;
+
+        const double tmp_r2 = biquad2_.ProcessSample(samples[i + 1]);
+        tmp_r += tmp_r2 * tmp_r2;
+    }
+
+    const double tmp = std::fmax(tmp_l, tmp_r);
+
+    return tmp / static_cast<double>(size);
 }

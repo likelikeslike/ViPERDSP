@@ -3,7 +3,6 @@
 #include "../utils/Harmonic.h"
 #include "../utils/MultiBiquad.h"
 #include <array>
-#include <cstdint>
 
 class PsychoacousticBass {
 public:
@@ -11,25 +10,30 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t samplingRate);
-    void SetCutoff(uint32_t cutoff);
-    void SetIntensity(uint32_t intensity);
-    void SetHarmonicOrder(uint32_t order);
-    void SetOriginalBassLevel(uint32_t level);
+    void SetCutoff(uint32_t value);
+    void SetIntensity(uint32_t value);
+    void SetHarmonicOrder(uint32_t value);
+    void SetOriginalBassLevel(uint32_t value);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
+    bool enabled_;
+
+    uint32_t sampling_rate_;
+    uint32_t cutoff_;
+    uint32_t harmonic_order_;
+
+    float intensity_;
+    float original_bass_level_;
+
+    double envelope_;
+
+    std::array<MultiBiquad, 2> lowpass_;
+    std::array<MultiBiquad, 2> highpass_;
+    std::array<Harmonic, 2> harmonics_;
+
     void RefreshFilters();
     void ApplyHarmonicCoeffs();
-
-    std::array<MultiBiquad, 2> lowpass;
-    std::array<MultiBiquad, 2> highpass;
-    std::array<Harmonic, 2> harmonics;
-    bool enabled;
-    uint32_t samplingRate;
-    uint32_t cutoff;
-    uint32_t harmonicOrder;
-    float intensity;
-    float originalBassLevel;
-    double envelope;
 };

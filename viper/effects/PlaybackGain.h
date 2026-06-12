@@ -7,14 +7,14 @@ class PlaybackGain {
 public:
     PlaybackGain();
 
-    double AnalyseWave(const float *samples, uint32_t size);
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
     void SetMaxGainFactor(float max_gain_factor);
     void SetRatio(float ratio);
-    void SetSamplingRate(uint32_t sampling_rate);
     void SetVolume(float volume);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
     bool enable_;
@@ -33,4 +33,6 @@ private:
 
     Biquad biquad1_;
     Biquad biquad2_;
+
+    double AnalyseWave(const float *samples, uint32_t size);
 };

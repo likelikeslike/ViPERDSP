@@ -17,12 +17,13 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
-    void SetBassFactor(float bass_factor);
+
     void SetEnable(bool enable);
     void SetProcessMode(ProcessMode mode);
-    void SetSamplingRate(uint32_t sampling_rate);
-    void SetSpeaker(uint32_t speaker);
+    void SetBassFactor(float value);
+    void SetFrequency(uint32_t value);
     void SetAntiPop(bool enable);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
     bool enable_;
@@ -30,7 +31,7 @@ private:
     ProcessMode process_mode_;
 
     uint32_t sampling_rate_;
-    uint32_t speaker_;
+    uint32_t frequency_;
 
     float sampling_rate_period_;
     float anti_pop_;

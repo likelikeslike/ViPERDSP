@@ -118,7 +118,7 @@ void ViPER::Process(std::vector<float> &buffer, const uint32_t size) {
     float *tmp_buf;
     uint32_t tmp_buf_size;
 
-    if (convolver_.GetEnabled() || vhe_.GetEnabled()) {
+    if (convolver_.GetEnable() || vhe_.GetEnable()) {
         if (!wave_buffer_.PushSamples(buffer.data(), size)) {
             wave_buffer_.Reset();
             memset(buffer.data(), 0, size * 2 * sizeof(float));
@@ -168,7 +168,7 @@ void ViPER::Process(std::vector<float> &buffer, const uint32_t size) {
         multiband_compressor_.Process(tmp_buf, tmp_buf_size);
         fet_compressor_.Process(tmp_buf, tmp_buf_size);
         dynamic_system_.Process(tmp_buf, tmp_buf_size);
-        tube_simulator_.TubeProcess(tmp_buf, tmp_buf_size);
+        tube_simulator_.Process(tmp_buf, tmp_buf_size);
         psychoacoustic_bass_.Process(tmp_buf, tmp_buf_size);
         viper_bass_.Process(tmp_buf, tmp_buf_size);
         viper_bass_mono_.Process(tmp_buf, tmp_buf_size);
@@ -229,21 +229,21 @@ void ViPER::DispatchRawParam(
             break;
         }
 
-        // Master Limiter / Output
+        // Master Limiter
         case kParamMasterLimiterThreshold: {
-            VIPER_LOGI("Limiter: %d", val1);
+            VIPER_LOGI("Master Limiter: threshold=%d", val1);
             software_limiters_[0].SetGate(static_cast<float>(val1) / 100.0f);
             software_limiters_[1].SetGate(static_cast<float>(val1) / 100.0f);
             break;
         }
         case kParamMasterLimiterOutputVolume: {
-            VIPER_LOGI("OutputVol: %d", val1);
+            VIPER_LOGI("Master Limiter: output_vol=%d", val1);
             frame_scale_ = static_cast<float>(val1) / 100.0f;
             break;
         }
         case kParamMasterLimiterChannelPan: {
+            VIPER_LOGI("Master Limiter: pan=%d", val1);
             const float tmp = static_cast<float>(val1) / 100.0f;
-            VIPER_LOGI("Pan: %d", val1);
             if (tmp < 0.0f) {
                 left_pan_ = 1.0f;
                 right_pan_ = 1.0f + tmp;
@@ -398,7 +398,7 @@ void ViPER::DispatchRawParam(
         }
         case kParamBassFrequency: {
             VIPER_LOGI("Bass: freq=%d", val1);
-            viper_bass_.SetSpeaker(static_cast<uint32_t>(val1));
+            viper_bass_.SetFrequency(static_cast<uint32_t>(val1));
             break;
         }
         case kParamBassGain: {
@@ -427,7 +427,7 @@ void ViPER::DispatchRawParam(
         }
         case kParamBassMonoFrequency: {
             VIPER_LOGI("BassMono: freq=%d", val1);
-            viper_bass_mono_.SetSpeaker(static_cast<uint32_t>(val1));
+            viper_bass_mono_.SetFrequency(static_cast<uint32_t>(val1));
             break;
         }
         case kParamBassMonoGain: {
@@ -521,9 +521,9 @@ void ViPER::DispatchRawParam(
         }
         case kParamConvolverPrepareBuffer: {
             VIPER_LOGI(
-                "Convolver: PrepareBuffer channels=%d frames=%d sr=%d", val1, val2, val3
+                "Convolver: PrepareBuffer buf_size=%d ch=%d reset=%d", val1, val2, val3
             );
-            convolver_.PrepareKernelBuffer(val1, val2, val3);
+            convolver_.PrepareKernelBuffer(val1, val2, val3 != 0);
             break;
         }
         case kParamConvolverSetBuffer: {
@@ -539,7 +539,7 @@ void ViPER::DispatchRawParam(
             break;
         }
         case kParamConvolverCrossChannel: {
-            VIPER_LOGI("Convolver: CrossChannel=%d%%", val1);
+            VIPER_LOGI("Convolver: cross_ch=%d%%", val1);
             convolver_.SetCrossChannel(static_cast<float>(val1) / 100.0f);
             break;
         }
@@ -578,7 +578,7 @@ void ViPER::DispatchRawParam(
         }
         case kParamFieldSurroundDepth: {
             VIPER_LOGI("FieldSurr: depth=%d", val1);
-            colorful_music_.SetDepthValue(static_cast<short>(val1));
+            colorful_music_.SetDepthValue(val1);
             break;
         }
 
@@ -727,7 +727,7 @@ void ViPER::DispatchRawParam(
         }
         case kParamClarityGain: {
             VIPER_LOGI("Clarity: gain=%d", val1);
-            viper_clarity_.SetClarity(static_cast<float>(val1) / 100.0f);
+            viper_clarity_.SetClarityGain(static_cast<float>(val1) / 100.0f);
             break;
         }
 
@@ -739,24 +739,7 @@ void ViPER::DispatchRawParam(
         }
         case kParamCureCrossfeedPreset: {
             VIPER_LOGI("Cure: crossfeed_preset=%d", val1);
-            switch (val1) {
-                case 0: {
-                    constexpr Crossfeed::Preset preset = {.cutoff = 650, .feedback = 95};
-                    cure_.SetPreset(preset);
-                    break;
-                }
-                case 1: {
-                    constexpr Crossfeed::Preset preset = {.cutoff = 700, .feedback = 60};
-                    cure_.SetPreset(preset);
-                    break;
-                }
-                case 2: {
-                    constexpr Crossfeed::Preset preset = {.cutoff = 700, .feedback = 45};
-                    cure_.SetPreset(preset);
-                    break;
-                }
-                default:;
-            }
+            cure_.SetPreset(val1);
             break;
         }
 
@@ -779,11 +762,7 @@ void ViPER::DispatchRawParam(
             break;
         }
 
-        // Speaker Correction (toggle only — cutoffs/Q live as constants
-        // in SpeakerCorrection::SpeakerCorrection() until UI surfaces
-        // sliders; the SetHighPassCutoff / SetLowPassCutoff /
-        // SetBandPassCenter / SetBandPassQ setters stay defined on the
-        // effect class so all layers grow back together when needed.)
+        // Speaker Correction
         case kParamSpeakerCorrectionEnable: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
             speaker_correction_.SetEnable(val1 != 0);
@@ -802,7 +781,7 @@ void ViPER::DispatchRawParam(
             break;
         }
         case kParamMultibandCompressorCrossoverFrequency: {
-            VIPER_LOGI("MBComp: xover[%d]=%d", val1, val2);
+            VIPER_LOGI("MBComp: crossover[%d]=%d", val1, val2);
             multiband_compressor_.SetCrossoverFrequency(val1, static_cast<float>(val2));
             break;
         }

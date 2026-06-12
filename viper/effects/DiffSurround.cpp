@@ -1,132 +1,132 @@
 #include "DiffSurround.h"
 #include "../constants.h"
-#include <cstring>
 
 DiffSurround::DiffSurround() :
-    buffers({WaveBuffer(1, 0x1000), WaveBuffer(1, 0x1000)}) {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->delayTime = 0.0f;
-    this->enable = false;
-    this->reverse = false;
-    this->wetDryMix = 1.0f;
-    this->lpCutoff = 0.0f;
+    enable_(false),
+    reverse_(false),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    delay_time_(0.0f),
+    wet_dry_mix_(1.0f),
+    lp_cutoff_(0.0f),
+    buffers_({WaveBuffer(1, 0x1000), WaveBuffer(1, 0x1000)}) {
     Reset();
 }
 
-void DiffSurround::Process(float *samples, uint32_t size) {
-    if (!this->enable) return;
+void DiffSurround::Process(float *samples, const uint32_t size) {
+    if (!enable_) return;
 
     float *bufs[2];
-    float *outbufs[2];
+    float *out_bufs[2];
 
-    bufs[0] = this->buffers[0].PushZerosGetBuffer(size);
-    bufs[1] = this->buffers[1].PushZerosGetBuffer(size);
+    bufs[0] = buffers_[0].PushZerosGetBuffer(size);
+    bufs[1] = buffers_[1].PushZerosGetBuffer(size);
 
     for (uint32_t i = 0; i < size * 2; i++) {
         bufs[i % 2][i / 2] = samples[i];
     }
 
-    outbufs[0] = this->buffers[0].GetBuffer();
-    outbufs[1] = this->buffers[1].GetBuffer();
+    out_bufs[0] = buffers_[0].GetBuffer();
+    out_bufs[1] = buffers_[1].GetBuffer();
 
-    if (this->wetDryMix >= 1.0f && this->lpCutoff <= 0.0f) {
+    if (wet_dry_mix_ >= 1.0f && lp_cutoff_ <= 0.0f) {
         for (uint32_t i = 0; i < size * 2; i++) {
-            samples[i] = outbufs[i % 2][i / 2];
+            samples[i] = out_bufs[i % 2][i / 2];
         }
     } else {
-        int delayedCh = this->reverse ? 0 : 1;
-        int directCh = 1 - delayedCh;
-        float wet = this->wetDryMix;
-        float dry = 1.0f - wet;
+        const int delayed_ch = reverse_ ? 0 : 1;
+        const int direct_ch = 1 - delayed_ch;
+        const float wet = wet_dry_mix_;
+        const float dry = 1.0f - wet;
 
         for (uint32_t i = 0; i < size; i++) {
-            float directSample = outbufs[directCh][i];
-            float delayedSample = outbufs[delayedCh][i];
+            const float direct_sample = out_bufs[direct_ch][i];
+            float delayed_sample = out_bufs[delayed_ch][i];
 
-            if (this->lpCutoff > 0.0f) {
-                delayedSample = (float) this->lpFilter.ProcessSample(delayedSample);
+            if (lp_cutoff_ > 0.0f) {
+                delayed_sample =
+                    static_cast<float>(lp_filter_.ProcessSample(delayed_sample));
             }
 
-            samples[i * 2 + directCh] = directSample;
-            samples[i * 2 + delayedCh] = dry * directSample + wet * delayedSample;
+            samples[i * 2 + direct_ch] = direct_sample;
+            samples[i * 2 + delayed_ch] = dry * direct_sample + wet * delayed_sample;
         }
     }
 
-    this->buffers[0].PopSamples(size, false);
-    this->buffers[1].PopSamples(size, false);
+    buffers_[0].PopSamples(size, false);
+    buffers_[1].PopSamples(size, false);
 }
 
 void DiffSurround::Reset() {
-    this->buffers[0].Reset();
-    this->buffers[1].Reset();
+    buffers_[0].Reset();
+    buffers_[1].Reset();
 
-    uint32_t delaySamples =
-        (uint32_t) ((double) this->delayTime / 1000.0 * (double) this->samplingRate);
-    this->buffers[this->reverse ? 0 : 1].PushZeros(delaySamples);
+    const auto delay_samples =
+        static_cast<uint32_t>(delay_time_ / 1000.0 * sampling_rate_);
+    buffers_[reverse_ ? 0 : 1].PushZeros(delay_samples);
 
-    this->lpFilter.Reset();
-    if (this->lpCutoff > 0.0f) {
-        this->lpFilter.RefreshFilter(
+    lp_filter_.Reset();
+    if (lp_cutoff_ > 0.0f) {
+        lp_filter_.RefreshFilter(
             MultiBiquad::FilterType::LOW_PASS,
-            0.0,
-            this->lpCutoff,
-            this->samplingRate,
-            0.7071,
+            0.0f,
+            lp_cutoff_,
+            sampling_rate_,
+            0.7071f,
             false
         );
     }
 }
 
-void DiffSurround::SetDelayTime(float delayTime) {
-    if (this->delayTime != delayTime) {
-        this->delayTime = delayTime;
-        this->Reset();
-    }
-}
-
-void DiffSurround::SetEnable(bool enable) {
-    if (this->enable != enable) {
-        if (!this->enable) {
+void DiffSurround::SetEnable(const bool enable) {
+    if (enable_ != enable) {
+        if (!enable_) {
             Reset();
         }
-        this->enable = enable;
+        enable_ = enable;
     }
 }
 
-void DiffSurround::SetReverse(bool reverse) {
-    if (this->reverse != reverse) {
-        this->reverse = reverse;
-        this->Reset();
+void DiffSurround::SetDelayTime(const float value) {
+    if (delay_time_ != value) {
+        delay_time_ = value;
+        Reset();
     }
 }
 
-void DiffSurround::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
-        this->Reset();
+void DiffSurround::SetReverse(const bool value) {
+    if (reverse_ != value) {
+        reverse_ = value;
+        Reset();
     }
 }
 
-void DiffSurround::SetWetDryMix(float mix) {
-    if (mix < 0.0f) mix = 0.0f;
-    if (mix > 1.0f) mix = 1.0f;
-    this->wetDryMix = mix;
+void DiffSurround::SetWetDryMix(float value) {
+    if (value < 0.0f) value = 0.0f;
+    if (value > 1.0f) value = 1.0f;
+    wet_dry_mix_ = value;
 }
 
-void DiffSurround::SetLPCutoff(float cutoff) {
-    if (cutoff < 0.0f) cutoff = 0.0f;
-    if (cutoff > 20000.0f) cutoff = 20000.0f;
-    if (this->lpCutoff != cutoff) {
-        this->lpCutoff = cutoff;
-        if (cutoff > 0.0f) {
-            this->lpFilter.RefreshFilter(
+void DiffSurround::SetLPCutoff(float value) {
+    if (value < 0.0f) value = 0.0f;
+    if (value > 20000.0f) value = 20000.0f;
+    if (lp_cutoff_ != value) {
+        lp_cutoff_ = value;
+        if (value > 0.0f) {
+            lp_filter_.RefreshFilter(
                 MultiBiquad::FilterType::LOW_PASS,
-                0.0,
-                cutoff,
-                this->samplingRate,
-                0.7071,
+                0.0f,
+                value,
+                sampling_rate_,
+                0.7071f,
                 false
             );
         }
+    }
+}
+
+void DiffSurround::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
+        Reset();
     }
 }

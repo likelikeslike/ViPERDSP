@@ -32,10 +32,10 @@ float SoftwareLimiter::Process(float sample) {
     const float delayed = arr256_[wi];
     const float window_peak = arr512_[1];
 
-    const float target_gain = (window_peak > gate_) ? (gate_ / window_peak) : 1.0f;
+    const float target_gain = window_peak > gate_ ? gate_ / window_peak : 1.0f;
     const float released =
         gain_envelope_ + kReleaseCoeff * (1.0f - gain_envelope_) + kDenormFix;
-    float gain = (target_gain < released) ? target_gain : released;
+    float gain = target_gain < released ? target_gain : released;
     if (gain > 1.0f) gain = 1.0f;
     gain_envelope_ = gain;
 
@@ -46,11 +46,11 @@ float SoftwareLimiter::Process(float sample) {
         const uint32_t sibling = node ^ 1;
         float a = arr512_[node];
         float b = arr512_[sibling];
-        arr512_[parent] = (a > b) ? a : b;
+        arr512_[parent] = a > b ? a : b;
         node = parent;
     }
     arr256_[wi] = sample;
-    write_index_ = (wi + 1) & (kLookahead - 1);
+    write_index_ = wi + 1 & kLookahead - 1;
 
     return delayed * gain;
 }

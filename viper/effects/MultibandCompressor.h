@@ -14,10 +14,11 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t sampling_rate);
-    void SetBandCount(uint32_t band_count);
+    void SetBandCount(uint32_t count);
     void SetCrossoverFrequency(uint32_t index, float frequency);
+    void SetSamplingRate(uint32_t sampling_rate);
 
     void SetBandEnable(uint32_t band, bool enable);
     void SetBandThreshold(uint32_t band, float value);

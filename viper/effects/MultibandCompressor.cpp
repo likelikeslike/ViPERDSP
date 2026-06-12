@@ -105,21 +105,11 @@ void MultibandCompressor::SetEnable(const bool enable) {
     }
 }
 
-void MultibandCompressor::SetSamplingRate(const uint32_t sampling_rate) {
-    if (sampling_rate_ != sampling_rate) {
-        sampling_rate_ = sampling_rate;
-        for (uint32_t i = 0; i < kMaxBands; i++) {
-            compressors_[i].SetSamplingRate(sampling_rate_);
-        }
-        ConfigureCrossovers();
-    }
-}
-
-void MultibandCompressor::SetBandCount(const uint32_t band_count) {
-    if (band_count != 3 && band_count != 5) return;
-    if (band_count_ != band_count) {
-        band_count_ = band_count;
-        if (band_count == 3) {
+void MultibandCompressor::SetBandCount(const uint32_t count) {
+    if (count != 3 && count != 5) return;
+    if (band_count_ != count) {
+        band_count_ = count;
+        if (count == 3) {
             crossover_freqs_[0] = kDefault3BandFreqs[0];
             crossover_freqs_[1] = kDefault3BandFreqs[1];
             crossover_freqs_[2] = 0.0f;
@@ -141,6 +131,16 @@ void MultibandCompressor::SetCrossoverFrequency(
     if (index >= num_crossovers) return;
     if (crossover_freqs_[index] != frequency) {
         crossover_freqs_[index] = frequency;
+        ConfigureCrossovers();
+    }
+}
+
+void MultibandCompressor::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
+        for (uint32_t i = 0; i < kMaxBands; i++) {
+            compressors_[i].SetSamplingRate(sampling_rate_);
+        }
         ConfigureCrossovers();
     }
 }

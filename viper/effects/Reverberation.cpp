@@ -1,52 +1,50 @@
 #include "Reverberation.h"
-#include "../constants.h"
 
-Reverberation::Reverberation() {
-    this->model.SetRoomSize(0.0);
-    this->model.SetWidth(0.0);
-    this->model.SetDamp(0.0);
-    this->model.SetWet(0.0);
-    this->model.SetDry(0.5);
-    this->model.Reset();
-
-    this->enable = false;
+Reverberation::Reverberation() :
+    enable_(false) {
+    model_.SetRoomSize(0.0f);
+    model_.SetWidth(0.0f);
+    model_.SetDamp(0.0f);
+    model_.SetWet(0.0f);
+    model_.SetDry(0.5f);
+    model_.Reset();
 }
 
-void Reverberation::Process(float *buffer, uint32_t size) {
-    if (this->enable) {
-        this->model.ProcessReplace(buffer, buffer + 1, size);
+void Reverberation::Process(float *buffer, const uint32_t size) {
+    if (enable_) {
+        model_.ProcessReplace(buffer, buffer + 1, size);
     }
 }
 
-void Reverberation::Reset() {
-    this->model.Reset();
+void Reverberation::Reset() const {
+    model_.Reset();
 }
 
-void Reverberation::SetDamp(float value) {
-    this->model.SetDamp(value);
-}
-
-void Reverberation::SetDry(float value) {
-    this->model.SetDry(value);
-}
-
-void Reverberation::SetEnable(bool enable) {
-    if (this->enable != enable) {
-        if (!this->enable) {
+void Reverberation::SetEnable(const bool enable) {
+    if (enable_ != enable) {
+        if (!enable_) {
             Reset();
         }
-        this->enable = enable;
+        enable_ = enable;
     }
 }
 
-void Reverberation::SetRoomSize(float value) {
-    this->model.SetRoomSize(value);
+void Reverberation::SetDamp(const float value) {
+    model_.SetDamp(value);
 }
 
-void Reverberation::SetWet(float value) {
-    this->model.SetWet(value);
+void Reverberation::SetDry(const float value) {
+    model_.SetDry(value);
 }
 
-void Reverberation::SetWidth(float value) {
-    this->model.SetWidth(value);
+void Reverberation::SetRoomSize(const float value) {
+    model_.SetRoomSize(value);
+}
+
+void Reverberation::SetWet(const float value) {
+    model_.SetWet(value);
+}
+
+void Reverberation::SetWidth(const float value) {
+    model_.SetWidth(value);
 }

@@ -18,7 +18,7 @@ public:
     void SetEnable(bool enable);
     void SetCutoff(uint32_t value);
     void SetFeedback(float value);
-    void SetPreset(Crossfeed::Preset preset);
+    void SetPreset(uint32_t value);
     void SetSamplingRate(uint32_t sampling_rate);
 
 private:

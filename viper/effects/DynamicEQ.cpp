@@ -55,12 +55,10 @@ void DynamicEQ::Process(float *samples, const uint32_t size) {
             const double power_l = sample_l * sample_l;
             const double power_r = sample_r * sample_r;
 
-            const double smooth_coeff_l =
-                (power_l > env_l) ? attack_coeff : release_coeff;
+            const double smooth_coeff_l = power_l > env_l ? attack_coeff : release_coeff;
             env_l += smooth_coeff_l * (power_l - env_l);
 
-            const double smooth_coeff_r =
-                (power_r > env_r) ? attack_coeff : release_coeff;
+            const double smooth_coeff_r = power_r > env_r ? attack_coeff : release_coeff;
             env_r += smooth_coeff_r * (power_r - env_r);
 
             double rms_linear = sqrt(std::max(env_l, env_r));
@@ -76,7 +74,7 @@ void DynamicEQ::Process(float *samples, const uint32_t size) {
                 desired_gain_db = static_cast<double>(target_gain) * ratio;
             }
 
-            const double gain_coeff = (fabs(desired_gain_db) > fabs(smoothed_gain))
+            const double gain_coeff = fabs(desired_gain_db) > fabs(smoothed_gain)
                                           ? attack_coeff
                                           : release_coeff;
             smoothed_gain += gain_coeff * (desired_gain_db - smoothed_gain);
@@ -120,17 +118,17 @@ void DynamicEQ::SetEnable(const bool enable) {
     }
 }
 
-void DynamicEQ::SetSamplingRate(const uint32_t sampling_rate) {
-    if (sampling_rate_ != sampling_rate) {
-        sampling_rate_ = sampling_rate;
-        Reset();
-    }
-}
-
 void DynamicEQ::SetBandCount(uint32_t count) {
     if (count > kMaxBands) count = kMaxBands;
     if (band_count_ != count) {
         band_count_ = count;
+        Reset();
+    }
+}
+
+void DynamicEQ::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
         Reset();
     }
 }

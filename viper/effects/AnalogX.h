@@ -3,7 +3,6 @@
 #include "../utils/Harmonic.h"
 #include "../utils/MultiBiquad.h"
 #include <array>
-#include <cstdint>
 
 class AnalogX {
 public:
@@ -11,19 +10,22 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void SetProcessingModel(int processingModel);
-    void SetSamplingRate(uint32_t samplingRate);
+    void SetProcessingModel(int model);
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    std::array<MultiBiquad, 2> highPass;
-    std::array<Harmonic, 2> harmonic;
-    std::array<MultiBiquad, 2> lowPass;
-    std::array<MultiBiquad, 2> peak;
+    bool enable_;
 
-    float gain;
-    uint32_t freqRange;
-    int processingModel;
-    uint32_t samplingRate;
-    bool enable;
+    int processing_model_;
+    uint32_t sampling_rate_;
+    uint32_t freq_range_;
+
+    float gain_;
+
+    std::array<MultiBiquad, 2> high_pass_;
+    std::array<Harmonic, 2> harmonic_;
+    std::array<MultiBiquad, 2> low_pass_;
+    std::array<MultiBiquad, 2> peak_;
 };
