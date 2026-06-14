@@ -8,23 +8,25 @@ public:
     explicit IIR_NOrder_BW_LH(uint32_t order);
 
     void Mute();
-    void setLPF(float frequency, uint32_t samplingRate);
-    void setHPF(float frequency, uint32_t samplingRate);
 
-    std::vector<IIR_1st> filters;
-    uint32_t order;
+    void SetLPF(float frequency, uint32_t sampling_rate);
+    void SetHPF(float frequency, uint32_t sampling_rate);
+
+    uint32_t order_;
+
+    std::vector<IIR_1st> filters_;
 };
 
-inline float do_filter_lh(IIR_NOrder_BW_LH *filt, float sample) {
-    for (uint32_t idx = 0; idx < filt->order; idx++) {
-        sample = do_filter(&filt->filters[idx], sample);
+inline float FilterLH(IIR_NOrder_BW_LH *filter, float sample) {
+    for (uint32_t idx = 0; idx < filter->order_; idx++) {
+        sample = Filter(&filter->filters_[idx], sample);
     }
     return sample;
 }
 
-inline float do_filter_lh(IIR_NOrder_BW_LH &filt, float sample) {
-    for (uint32_t idx = 0; idx < filt.order; idx++) {
-        sample = do_filter(&filt.filters[idx], sample);
+inline float FilterLH(IIR_NOrder_BW_LH &filter, float sample) {
+    for (uint32_t idx = 0; idx < filter.order_; idx++) {
+        sample = Filter(&filter.filters_[idx], sample);
     }
     return sample;
 }

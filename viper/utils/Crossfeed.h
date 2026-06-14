@@ -11,6 +11,7 @@ public:
 
     Crossfeed();
 
+    void ProcessFrames(float *buffer, uint32_t size);
     void Reset();
 
     [[nodiscard]] uint32_t GetCutoff() const;
@@ -23,7 +24,6 @@ public:
     void SetPreset(Preset preset);
     void SetSamplingRate(uint32_t sampling_rate);
 
-    void ProcessFrames(float *buffer, uint32_t size);
     void FilterSample(float *sample);
 
 private:

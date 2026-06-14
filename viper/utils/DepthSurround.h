@@ -2,23 +2,27 @@
 
 #include "Biquad.h"
 #include "TimeConstDelay.h"
-#include <cstdint>
 
 class DepthSurround {
 public:
     DepthSurround();
 
     void Process(float *samples, uint32_t size);
-    void RefreshStrength(short strength);
-    void SetSamplingRate(uint32_t samplingRate);
-    void SetStrength(short strength);
+
+    void SetStrength(uint32_t value);
+    void SetSamplingRate(uint32_t sampling_rate);
+
+    void RefreshStrength(uint32_t strength);
 
 private:
-    short strength;
-    bool enabled;
-    bool strengthAtLeast500;
-    float gain;
-    float prev[2];
-    TimeConstDelay timeConstDelay[2];
-    Biquad highpass;
+    bool enable_;
+    bool strength_at_least500_;
+
+    uint32_t strength_;
+
+    float gain_;
+    float prev_[2] = {};
+
+    TimeConstDelay time_const_delay_[2];
+    Biquad highpass_;
 };

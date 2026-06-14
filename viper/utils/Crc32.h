@@ -45,7 +45,7 @@ constexpr uint32_t kCrcTable[256] = {
 static uint32_t Crc32(const uint8_t *data, const uint32_t length) {
     uint32_t crc = 0xffffffff;
     for (uint32_t i = 0; i < length; ++i) {
-        crc = kCrcTable[(crc ^ data[i]) & 0xff] ^ (crc >> 8);
+        crc = kCrcTable[(crc ^ data[i]) & 0xff] ^ crc >> 8;
     }
     return ~crc;
 }

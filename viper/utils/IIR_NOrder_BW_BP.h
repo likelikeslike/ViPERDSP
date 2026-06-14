@@ -9,27 +9,28 @@ public:
 
     void Mute();
 
-    void setBPF(float highCut, float lowCut, uint32_t samplingRate);
+    void SetBPF(float high_cut, float low_cut, uint32_t sampling_rate);
 
-    std::vector<IIR_1st> lowpass;
-    std::vector<IIR_1st> highpass;
-    uint32_t order;
+    uint32_t order_;
+
+    std::vector<IIR_1st> lowpass_;
+    std::vector<IIR_1st> highpass_;
 };
 
-inline float do_filter_bplp(IIR_NOrder_BW_BP *filt, float sample) {
-    for (uint32_t idx = 0; idx < filt->order; idx++) {
-        sample = do_filter(&filt->lowpass[idx], sample);
+inline float FilterBPLowPass(IIR_NOrder_BW_BP *filter, float sample) {
+    for (uint32_t idx = 0; idx < filter->order_; idx++) {
+        sample = Filter(&filter->lowpass_[idx], sample);
     }
     return sample;
 }
 
-inline float do_filter_bphp(IIR_NOrder_BW_BP *filt, float sample) {
-    for (uint32_t idx = 0; idx < filt->order; idx++) {
-        sample = do_filter(&filt->highpass[idx], sample);
+inline float FilterBPHighPass(IIR_NOrder_BW_BP *filter, float sample) {
+    for (uint32_t idx = 0; idx < filter->order_; idx++) {
+        sample = Filter(&filter->highpass_[idx], sample);
     }
     return sample;
 }
 
-inline float do_filter_bp(IIR_NOrder_BW_BP *filt, float sample) {
-    return do_filter_bphp(filt, do_filter_bplp(filt, sample));
+inline float FilterBP(IIR_NOrder_BW_BP *filter, const float sample) {
+    return FilterBPHighPass(filter, FilterBPLowPass(filter, sample));
 }

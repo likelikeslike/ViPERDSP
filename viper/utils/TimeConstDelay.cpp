@@ -1,23 +1,21 @@
 #include "TimeConstDelay.h"
-#include <cmath>
 
-TimeConstDelay::TimeConstDelay() {
-    this->offset = 0;
-    this->sampleCount = 0;
-}
+TimeConstDelay::TimeConstDelay() :
+    offset_(0),
+    sample_count_(0) {}
 
-float TimeConstDelay::ProcessSample(float sample) {
-    float val = this->samples[this->offset];
-    this->samples[this->offset] = sample;
-    this->offset++;
-    if (this->offset >= this->sampleCount) {
-        this->offset = 0;
+float TimeConstDelay::ProcessSample(const float sample) {
+    const float val = samples_[offset_];
+    samples_[offset_] = sample;
+    offset_++;
+    if (offset_ >= sample_count_) {
+        offset_ = 0;
     }
     return val;
 }
 
-void TimeConstDelay::SetParameters(uint32_t samplingRate, float delay) {
-    this->sampleCount = (uint32_t) ((float) samplingRate * delay);
-    this->samples.assign(this->sampleCount, 0.0f);
-    this->offset = 0;
+void TimeConstDelay::SetParameters(const uint32_t sampling_rate, const float delay) {
+    sample_count_ = static_cast<uint32_t>(static_cast<float>(sampling_rate) * delay);
+    samples_.assign(sample_count_, 0.0f);
+    offset_ = 0;
 }

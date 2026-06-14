@@ -7,23 +7,23 @@
 class HiFi {
 public:
     HiFi();
-
     ~HiFi();
 
     void Process(float *samples, uint32_t size);
-
     void Reset();
 
     void SetClarity(float value);
+    void SetSamplingRate(uint32_t sampling_rate);
 
-    void SetSamplingRate(uint32_t samplingRate);
+private:
+    uint32_t sampling_rate_;
 
-    WaveBuffer *buffers[2];
+    float gain_;
+
+    WaveBuffer *buffers_[2];
     struct {
         IIR_NOrder_BW_LH *lowpass;
         IIR_NOrder_BW_LH *highpass;
         IIR_NOrder_BW_BP *bandpass;
-    } filters[2];
-    float gain;
-    uint32_t samplingRate;
+    } filters_[2];
 };

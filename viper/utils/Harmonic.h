@@ -8,13 +8,16 @@ public:
 
     double Process(double sample);
     void Reset();
+
     void SetHarmonics(const float *coeffs);
+
     void UpdateCoeffs(const float *coeffs);
 
 private:
-    float coeffs[11];
-    double lastProcessed;
-    double prevOut;
-    uint32_t biggestCoeff;
-    uint32_t sampleCounter;
+    uint32_t biggest_coeff_;
+    uint32_t sample_counter_;
+
+    float coeffs_[11];
+    double last_processed_;
+    double prev_out_;
 };

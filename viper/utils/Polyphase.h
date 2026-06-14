@@ -2,22 +2,26 @@
 
 #include "FIR.h"
 #include "WaveBuffer.h"
-#include <cstdint>
 
 class Polyphase {
 public:
-    Polyphase(int param_1);
+    explicit Polyphase(int coeff_type);
 
-    uint32_t GetLatency();
     uint32_t Process(float *samples, uint32_t size);
     void Reset();
-    void SetSamplingRate(uint32_t samplingRate);
+
+    [[nodiscard]] uint32_t GetLatency() const;
+
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    FIR fir1;
-    FIR fir2;
-    WaveBuffer waveBuffer1;
-    WaveBuffer waveBuffer2;
-    float buffer[0x7e0];
-    uint32_t samplingRate;
+    uint32_t sampling_rate_;
+    uint32_t latency_;
+
+    float buffer_[0x7e0];
+
+    FIR fir1_;
+    FIR fir2_;
+    WaveBuffer wave_buffer1_;
+    WaveBuffer wave_buffer2_;
 };

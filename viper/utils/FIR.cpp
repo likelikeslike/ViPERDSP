@@ -1,38 +1,34 @@
 #include "FIR.h"
-#include <cstring>
 
-FIR::FIR() {
-    this->coeffsSize = 0;
-    this->blockLength = 0;
-    this->hasCoefficients = false;
-}
+FIR::FIR() :
+    has_coefficients_(false),
+    coeffs_size_(0),
+    block_length_(0) {}
 
-void FIR::FilterSamples(float *samples, uint32_t size) {
-    this->FilterSamplesInterleaved(samples, size, 1);
-}
-
-void FIR::FilterSamplesInterleaved(float *samples, uint32_t size, uint32_t channels) {
-    if (!this->hasCoefficients || size == 0) return;
+void FIR::FilterSamplesInterleaved(
+    float *samples, const uint32_t size, const uint32_t channels
+) {
+    if (!has_coefficients_ || size == 0) return;
 
     for (uint32_t i = 0; i < size; i++) {
-        this->block[i] = samples[i * channels];
+        block_[i] = samples[i * channels];
     }
 
-    if (this->blockLength > size) {
-        memset(this->block.data() + size, 0, (this->blockLength - size) * sizeof(float));
+    if (block_length_ > size) {
+        memset(block_.data() + size, 0, (block_length_ - size) * sizeof(float));
     }
 
     memcpy(
-        this->offsetBlock.data() + this->coeffsSize - 1,
-        this->block.data(),
-        this->blockLength * sizeof(float)
+        offset_block_.data() + coeffs_size_ - 1,
+        block_.data(),
+        block_length_ * sizeof(float)
     );
 
-    for (uint32_t i = 0; i < this->blockLength; i++) {
+    for (uint32_t i = 0; i < block_length_; i++) {
         float sample = 0.0f;
 
-        for (uint32_t j = 0; j < this->coeffsSize; j++) {
-            sample += this->coeffs[j] * this->offsetBlock[this->coeffsSize + i - j - 1];
+        for (uint32_t j = 0; j < coeffs_size_; j++) {
+            sample += coeffs_[j] * offset_block_[coeffs_size_ + i - j - 1];
         }
 
         if (i < size) {
@@ -40,44 +36,42 @@ void FIR::FilterSamplesInterleaved(float *samples, uint32_t size, uint32_t chann
         }
     }
 
-    if (this->coeffsSize > 1) {
-        uint32_t carryCount = this->coeffsSize - 1;
-        for (uint32_t i = 0; i < carryCount; i++) {
-            this->offsetBlock[i] = this->block[this->blockLength - carryCount + i];
+    if (coeffs_size_ > 1) {
+        const uint32_t carry_count = coeffs_size_ - 1;
+        for (uint32_t i = 0; i < carry_count; i++) {
+            offset_block_[i] = block_[block_length_ - carry_count + i];
         }
     }
 }
 
-uint32_t FIR::GetBlockLength() {
-    return this->blockLength;
+void FIR::Reset() {
+    if (coeffs_size_ + block_length_ > 0) {
+        memset(
+            offset_block_.data(), 0, (coeffs_size_ + block_length_ + 1) * sizeof(float)
+        );
+    }
 }
 
 int FIR::LoadCoefficients(
-    const float *coeffs, uint32_t coeffsSize, uint32_t blockLength
+    const float *coeffs, const uint32_t coeffs_size, const uint32_t block_length
 ) {
-    if (coeffs == nullptr || coeffsSize == 0 || blockLength == 0) return 0;
+    if (coeffs == nullptr || coeffs_size == 0 || block_length == 0) return 0;
 
-    this->offsetBlock = std::vector<float>(coeffsSize + blockLength + 1);
-    this->coeffs = std::vector<float>(coeffsSize);
-    this->block = std::vector<float>(blockLength);
+    offset_block_ = std::vector<float>(coeffs_size + block_length + 1);
+    coeffs_ = std::vector<float>(coeffs_size);
+    block_ = std::vector<float>(block_length);
 
-    this->coeffsSize = coeffsSize;
-    this->blockLength = blockLength;
+    coeffs_size_ = coeffs_size;
+    block_length_ = block_length;
 
-    memcpy(this->coeffs.data(), coeffs, coeffsSize * sizeof(float));
+    memcpy(coeffs_.data(), coeffs, coeffs_size * sizeof(float));
 
     Reset();
-    this->hasCoefficients = true;
+    has_coefficients_ = true;
 
     return 1;
 }
 
-void FIR::Reset() {
-    if (this->coeffsSize + this->blockLength > 0) {
-        memset(
-            this->offsetBlock.data(),
-            0,
-            (this->coeffsSize + this->blockLength + 1) * sizeof(float)
-        );
-    }
+uint32_t FIR::GetBlockLength() const {
+    return block_length_;
 }

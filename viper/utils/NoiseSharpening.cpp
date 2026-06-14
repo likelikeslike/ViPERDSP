@@ -1,33 +1,33 @@
 #include "NoiseSharpening.h"
 #include "../constants.h"
 
-NoiseSharpening::NoiseSharpening() {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->gain = 0.0;
+NoiseSharpening::NoiseSharpening() :
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    gain_(0.0f) {
     Reset();
 }
 
-void NoiseSharpening::Process(float *buffer, uint32_t size) {
+void NoiseSharpening::Process(float *buffer, const uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
-        float sampleLeft = buffer[i * 2];
-        float sampleRight = buffer[i * 2 + 1];
-        float prevLeft = this->in[0];
-        float prevRight = this->in[1];
-        this->in[0] = sampleLeft;
-        this->in[1] = sampleRight;
-        float diffLeft = (sampleLeft - prevLeft) * this->gain;
-        float diffRight = (sampleRight - prevRight) * this->gain;
+        const float sample_l = buffer[i * 2];
+        const float sample_r = buffer[i * 2 + 1];
+        const float prev_l = in_[0];
+        const float prev_r = in_[1];
+        in_[0] = sample_l;
+        in_[1] = sample_r;
+        const float diff_l = (sample_l - prev_l) * gain_;
+        const float diff_r = (sample_r - prev_r) * gain_;
 
-        float sampleLeftIn = sampleLeft + diffLeft;
-        float sampleRightIn = sampleRight + diffRight;
+        const float sample_l_in = sample_l + diff_l;
+        const float sample_r_in = sample_r + diff_r;
 
-        float hist = (sampleLeftIn) * this->filters[0].b1;
-        float left = this->filters[0].prevSample + (sampleLeftIn) * this->filters[0].b0;
-        this->filters[0].prevSample = (sampleLeftIn) * this->filters[0].a1 + hist;
+        float hist = sample_l_in * filters_[0].b1_;
+        const float left = filters_[0].prev_sample_ + sample_l_in * filters_[0].b0_;
+        filters_[0].prev_sample_ = sample_l_in * filters_[0].a1_ + hist;
 
-        hist = (sampleRightIn) * this->filters[1].b1;
-        float right = this->filters[1].prevSample + (sampleRightIn) * this->filters[1].b0;
-        this->filters[1].prevSample = (sampleRightIn) * this->filters[1].a1 + hist;
+        hist = sample_r_in * filters_[1].b1_;
+        const float right = filters_[1].prev_sample_ + sample_r_in * filters_[1].b0_;
+        filters_[1].prev_sample_ = sample_r_in * filters_[1].a1_ + hist;
 
         buffer[i * 2] = left;
         buffer[i * 2 + 1] = right;
@@ -36,19 +36,19 @@ void NoiseSharpening::Process(float *buffer, uint32_t size) {
 
 void NoiseSharpening::Reset() {
     for (int i = 0; i < 2; i++) {
-        this->filters[i].setLPF_BW(
-            (float) ((double) this->samplingRate / 2.0 - 1000.0), this->samplingRate
+        filters_[i].SetLowPassFilterBW(
+            static_cast<float>(sampling_rate_ / 2.0 - 1000.0), sampling_rate_
         );
-        this->filters[i].Mute();
-        this->in[i] = 0.0;
+        filters_[i].Mute();
+        in_[i] = 0.0f;
     }
 }
 
-void NoiseSharpening::SetGain(float gain) {
-    this->gain = gain;
+void NoiseSharpening::SetGain(const float gain) {
+    gain_ = gain;
 }
 
-void NoiseSharpening::SetSamplingRate(uint32_t samplingRate) {
-    this->samplingRate = samplingRate;
+void NoiseSharpening::SetSamplingRate(const uint32_t sampling_rate) {
+    sampling_rate_ = sampling_rate;
     Reset();
 }

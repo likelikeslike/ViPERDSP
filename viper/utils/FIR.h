@@ -1,23 +1,27 @@
 #pragma once
 
-#include <cstdint>
 #include <vector>
 
 class FIR {
 public:
     FIR();
 
-    void FilterSamples(float *samples, uint32_t size);
     void FilterSamplesInterleaved(float *samples, uint32_t size, uint32_t channels);
-    uint32_t GetBlockLength();
-    int LoadCoefficients(const float *coeffs, uint32_t coeffsSize, uint32_t blockLength);
     void Reset();
 
+    [[nodiscard]] uint32_t GetBlockLength() const;
+
+    int LoadCoefficients(
+        const float *coeffs, uint32_t coeffs_size, uint32_t block_length
+    );
+
 private:
-    std::vector<float> offsetBlock;
-    std::vector<float> coeffs;
-    std::vector<float> block;
-    uint32_t coeffsSize;
-    uint32_t blockLength;
-    bool hasCoefficients;
+    bool has_coefficients_;
+
+    uint32_t coeffs_size_;
+    uint32_t block_length_;
+
+    std::vector<float> offset_block_;
+    std::vector<float> coeffs_;
+    std::vector<float> block_;
 };

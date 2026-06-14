@@ -2,64 +2,65 @@
 #include "../constants.h"
 #include <cmath>
 
-Subwoofer::Subwoofer() {
-    uint32_t samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->peak[0].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, 0.0, 37.0, samplingRate, 1.0, false
+Subwoofer::Subwoofer() :
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    gain_(0.0f),
+    gain_lower_(0.0f) {
+    peak_[0].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_, 37.0f, sampling_rate_, 1.0f, false
     );
-    this->peak[1].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, 0.0, 37.0, samplingRate, 1.0, false
+    peak_[1].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_, 37.0f, sampling_rate_, 1.0f, false
     );
-    this->peakLow[0].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, 0.0, 75.0, samplingRate, 1.0, false
+    peak_low_[0].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_lower_, 75.0f, sampling_rate_, 1.0f, false
     );
-    this->peakLow[1].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, 0.0, 75.0, samplingRate, 1.0, false
+    peak_low_[1].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_lower_, 75.0f, sampling_rate_, 1.0f, false
     );
-    this->lowpass[0].RefreshFilter(
-        MultiBiquad::FilterType::LOW_PASS, 0.0, 200.0, samplingRate, 1.0, false
+    lowpass_[0].RefreshFilter(
+        MultiBiquad::FilterType::LOW_PASS, 0.0f, 200.0f, sampling_rate_, 1.0f, false
     );
-    this->lowpass[1].RefreshFilter(
-        MultiBiquad::FilterType::LOW_PASS, 0.0, 200.0, samplingRate, 1.0, false
+    lowpass_[1].RefreshFilter(
+        MultiBiquad::FilterType::LOW_PASS, 0.0f, 200.0f, sampling_rate_, 1.0f, false
     );
 }
 
-void Subwoofer::Process(float *samples, uint32_t size) {
+void Subwoofer::Process(float *samples, const uint32_t size) {
     for (uint32_t i = 0; i < size * 2; i += 2) {
-        double tmp;
 
-        tmp = this->peak[0].ProcessSample(samples[i]);
-        tmp = this->peakLow[0].ProcessSample(tmp);
-        tmp = this->lowpass[0].ProcessSample(tmp - samples[i]);
-        samples[i] = (samples[i] * 0.5f) + ((float) tmp * 0.6f);
+        double tmp = peak_[0].ProcessSample(samples[i]);
+        tmp = peak_low_[0].ProcessSample(tmp);
+        tmp = lowpass_[0].ProcessSample(tmp - samples[i]);
+        samples[i] = samples[i] * 0.5f + static_cast<float>(tmp) * 0.6f;
 
-        tmp = this->peak[1].ProcessSample(samples[i + 1]);
-        tmp = this->peakLow[1].ProcessSample(tmp);
-        tmp = this->lowpass[1].ProcessSample(tmp - samples[i + 1]);
-        samples[i + 1] = (samples[i + 1] * 0.5f) + ((float) tmp * 0.6f);
+        tmp = peak_[1].ProcessSample(samples[i + 1]);
+        tmp = peak_low_[1].ProcessSample(tmp);
+        tmp = lowpass_[1].ProcessSample(tmp - samples[i + 1]);
+        samples[i + 1] = samples[i + 1] * 0.5f + static_cast<float>(tmp) * 0.6f;
     }
 }
 
-void Subwoofer::SetBassGain(uint32_t samplingRate, float gainDb) {
-    float gain = 20.0f * log10(gainDb);
-    float gainLower = 20.0f * log10(gainDb / 8.0f);
+void Subwoofer::SetBassGain(const uint32_t sampling_rate, const float gain_db) {
+    gain_ = 20.0f * log10(gain_db);
+    gain_lower_ = 20.0f * log10(gain_db / 8.0f);
 
-    this->peak[0].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, gain, 44.0, samplingRate, 0.75, true
+    peak_[0].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_, 44.0f, sampling_rate, 0.75f, true
     );
-    this->peak[1].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, gain, 44.0, samplingRate, 0.75, true
+    peak_[1].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_, 44.0f, sampling_rate, 0.75f, true
     );
-    this->peakLow[0].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, gainLower, 80.0, samplingRate, 0.2, true
+    peak_low_[0].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_lower_, 80.0f, sampling_rate, 0.2f, true
     );
-    this->peakLow[1].RefreshFilter(
-        MultiBiquad::FilterType::PEAK, gainLower, 80.0, samplingRate, 0.2, true
+    peak_low_[1].RefreshFilter(
+        MultiBiquad::FilterType::PEAK, gain_lower_, 80.0f, sampling_rate, 0.2f, true
     );
-    this->lowpass[0].RefreshFilter(
-        MultiBiquad::FilterType::LOW_PASS, 0.0, 380.0, samplingRate, 0.6, false
+    lowpass_[0].RefreshFilter(
+        MultiBiquad::FilterType::LOW_PASS, 0.0f, 380.0f, sampling_rate, 0.6f, false
     );
-    this->lowpass[1].RefreshFilter(
-        MultiBiquad::FilterType::LOW_PASS, 0.0, 380.0, samplingRate, 0.6, false
+    lowpass_[1].RefreshFilter(
+        MultiBiquad::FilterType::LOW_PASS, 0.0f, 380.0f, sampling_rate, 0.6f, false
     );
 }

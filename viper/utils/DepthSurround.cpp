@@ -2,68 +2,64 @@
 #include "../constants.h"
 #include <cmath>
 
-DepthSurround::DepthSurround() {
-    this->strength = 0;
-    this->enabled = false;
-    this->strengthAtLeast500 = false;
-    this->gain = 0;
-    for (auto &prev : this->prev) {
+DepthSurround::DepthSurround() :
+    enable_(false),
+    strength_at_least500_(false),
+    strength_(0),
+    gain_(0.0f) {
+    for (auto &prev : prev_) {
         prev = 0.0f;
     }
-    this->SetSamplingRate(VIPER_DEFAULT_SAMPLING_RATE);
-    this->RefreshStrength(this->strength);
+    SetSamplingRate(VIPER_DEFAULT_SAMPLING_RATE);
+    RefreshStrength(strength_);
 }
 
-void DepthSurround::Process(float *samples, uint32_t size) {
-    if (!this->enabled) return;
+void DepthSurround::Process(float *samples, const uint32_t size) {
+    if (!enable_) return;
 
-    float gainR = this->strengthAtLeast500 ? -this->gain : this->gain;
+    const float gain_r = strength_at_least500_ ? -gain_ : gain_;
 
     for (uint32_t i = 0; i < size; i++) {
-        float sampleLeft = samples[2 * i];
-        float sampleRight = samples[2 * i + 1];
+        const float sample_l = samples[2 * i];
+        const float sample_r = samples[2 * i + 1];
 
-        this->prev[0] =
-            this->gain
-            * this->timeConstDelay[0].ProcessSample(sampleLeft + this->prev[1]);
-        this->prev[1] =
-            gainR * this->timeConstDelay[1].ProcessSample(sampleRight + this->prev[0]);
+        prev_[0] = gain_ * time_const_delay_[0].ProcessSample(sample_l + prev_[1]);
+        prev_[1] = gain_r * time_const_delay_[1].ProcessSample(sample_r + prev_[0]);
 
-        float l = this->prev[0] + sampleLeft;
-        float r = this->prev[1] + sampleRight;
+        const float l = prev_[0] + sample_l;
+        const float r = prev_[1] + sample_r;
 
-        float diff = (l - r) / 2.f;
-        float avg = (l + r) / 2.f;
-        float avgOut = (float) this->highpass.ProcessSample(diff);
-        samples[2 * i] = avg + (diff - avgOut);
-        samples[2 * i + 1] = avg - (diff - avgOut);
+        const float diff = (l - r) / 2.0f;
+        const float avg = (l + r) / 2.0f;
+        const auto avg_out = static_cast<float>(highpass_.ProcessSample(diff));
+        samples[2 * i] = avg + (diff - avg_out);
+        samples[2 * i + 1] = avg - (diff - avg_out);
     }
 }
 
-void DepthSurround::RefreshStrength(short strength) {
-    this->strengthAtLeast500 = strength >= 500;
-    this->enabled = strength != 0;
+void DepthSurround::SetStrength(const uint32_t value) {
+    strength_ = value;
+    RefreshStrength(value);
+}
+
+void DepthSurround::RefreshStrength(const uint32_t strength) {
+    strength_at_least500_ = strength >= 500;
+    enable_ = strength != 0;
     if (strength != 0) {
-        float gain = (float) pow(10.0, ((strength / 1000.0) * 10.0 - 15.0) / 20.0);
-        if (gain > 1.0) {
-            gain = 1.0;
-        }
-        this->gain = (float) gain;
+        auto gain =
+            static_cast<float>(pow(10.0, (strength / 1000.0 * 10.0 - 15.0) / 20.0));
+        gain = fmin(gain, 1.0f);
+        gain_ = gain;
     } else {
-        this->gain = 0.0;
+        gain_ = 0.0f;
     }
 }
 
-void DepthSurround::SetSamplingRate(uint32_t samplingRate) {
-    this->timeConstDelay[0].SetParameters(samplingRate, 0.02);
-    this->timeConstDelay[1].SetParameters(samplingRate, 0.014);
-    this->highpass.SetHighPassParameter(800.0f, samplingRate, -11.0f, 0.72f, 0.0);
-    for (auto &prev : this->prev) {
+void DepthSurround::SetSamplingRate(const uint32_t sampling_rate) {
+    time_const_delay_[0].SetParameters(sampling_rate, 0.02f);
+    time_const_delay_[1].SetParameters(sampling_rate, 0.014f);
+    highpass_.SetHighPassParameter(800.0f, sampling_rate, -11.0f, 0.72f);
+    for (auto &prev : prev_) {
         prev = 0.0f;
     }
-}
-
-void DepthSurround::SetStrength(short strength) {
-    this->strength = strength;
-    this->RefreshStrength(strength);
 }

@@ -15,20 +15,19 @@ class PolesFilter {
 public:
     PolesFilter();
 
+    void FilterLeft(float sample, float *out1, float *out2, float *out3);
+    void FilterRight(float sample, float *out1, float *out2, float *out3);
     void Reset();
+
+    void SetPassFilter(uint32_t lower_freq, uint32_t upper_freq);
+    void SetSamplingRate(uint32_t sampling_rate);
 
     void UpdateCoeff();
 
-    void DoFilterLeft(float sample, float *out1, float *out2, float *out3);
+private:
+    uint32_t lower_freq_;
+    uint32_t upper_freq_;
+    uint32_t sampling_rate_;
 
-    void DoFilterRight(float sample, float *out1, float *out2, float *out3);
-
-    void SetPassFilter(uint32_t lower_freq, uint32_t upper_freq);
-
-    void SetSamplingRate(uint32_t samplingRate);
-
-    channel channels[2];
-    uint32_t lower_freq;
-    uint32_t upper_freq;
-    uint32_t samplingRate;
+    channel channels_[2];
 };

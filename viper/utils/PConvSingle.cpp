@@ -22,6 +22,36 @@ PConvSingle::~PConvSingle() {
     ReleaseResources();
 }
 
+void PConvSingle::Reset() {
+    if (!instance_usable_) return;
+
+    for (int i = 0; i < segment_count_; i++) {
+        memset(input_history_[i], 0, fft_size_ * sizeof(float));
+    }
+    memset(overlap_buffer_, 0, segment_size_ * sizeof(float));
+    memset(fft_buffer_, 0, fft_size_ * sizeof(float));
+    memset(accum_buffer_, 0, fft_size_ * sizeof(float));
+    memset(mono_buffer_, 0, segment_size_ * sizeof(float));
+    memset(fft_work_, 0, fft_size_ * sizeof(float));
+    delay_line_index_ = 0;
+}
+
+uint32_t PConvSingle::GetFFTSize() const {
+    return segment_size_ * 2;
+}
+
+uint32_t PConvSingle::GetSegmentCount() const {
+    return segment_count_;
+}
+
+uint32_t PConvSingle::GetSegmentSize() const {
+    return segment_size_;
+}
+
+bool PConvSingle::InstanceUsable() const {
+    return instance_usable_;
+}
+
 void PConvSingle::Convolve(float *buffer) {
     ConvSegment(buffer, false, 0);
 }
@@ -92,27 +122,11 @@ void PConvSingle::ConvSegment(float *buffer, const bool interleaved, const int c
     delay_line_index_ = (delay_line_index_ + 1) % segment_count_;
 }
 
-uint32_t PConvSingle::GetFFTSize() const {
-    return segment_size_ * 2;
-}
-
-uint32_t PConvSingle::GetSegmentCount() const {
-    return segment_count_;
-}
-
-uint32_t PConvSingle::GetSegmentSize() const {
-    return segment_size_;
-}
-
-bool PConvSingle::InstanceUsable() const {
-    return instance_usable_;
-}
-
 uint32_t PConvSingle::LoadKernel(
     const float *kernel, const uint32_t kernel_size, const uint32_t segment_size
 ) {
     if (kernel != nullptr && kernel_size >= 2 && segment_size >= 2
-        && (segment_size & (segment_size - 1)) == 0) {
+        && (segment_size & segment_size - 1) == 0) {
         instance_usable_ = false;
         ReleaseResources();
         segment_size_ = segment_size;
@@ -133,7 +147,7 @@ uint32_t PConvSingle::LoadKernel(
     const uint32_t segment_size
 ) {
     if (kernel != nullptr && kernel_size >= 2 && segment_size >= 2
-        && (segment_size & (segment_size - 1)) == 0) {
+        && (segment_size & segment_size - 1) == 0) {
         instance_usable_ = false;
         ReleaseResources();
         segment_size_ = segment_size;
@@ -262,20 +276,6 @@ void PConvSingle::ReleaseResources() {
     segment_count_ = 0;
     segment_size_ = 0;
     fft_size_ = 0;
-    delay_line_index_ = 0;
-}
-
-void PConvSingle::Reset() {
-    if (!instance_usable_) return;
-
-    for (int i = 0; i < segment_count_; i++) {
-        memset(input_history_[i], 0, fft_size_ * sizeof(float));
-    }
-    memset(overlap_buffer_, 0, segment_size_ * sizeof(float));
-    memset(fft_buffer_, 0, fft_size_ * sizeof(float));
-    memset(accum_buffer_, 0, fft_size_ * sizeof(float));
-    memset(mono_buffer_, 0, segment_size_ * sizeof(float));
-    memset(fft_work_, 0, fft_size_ * sizeof(float));
     delay_line_index_ = 0;
 }
 

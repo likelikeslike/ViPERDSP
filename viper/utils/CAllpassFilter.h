@@ -2,19 +2,22 @@
 
 #include <cstdint>
 
-class CAllpassFilter {
+class CAllPassFilter {
 public:
-    CAllpassFilter();
+    CAllPassFilter();
 
-    float GetFeedback();
-    void Mute();
     float Process(float sample);
+    void Mute() const;
+
     void SetBuffer(float *buffer, uint32_t size);
-    void SetFeedback(float feedback);
+    void SetFeedback(float value);
+
+    [[nodiscard]] float GetFeedback() const;
 
 private:
-    float feedback;
-    float *buffer;
-    uint32_t bufferSize;
-    uint32_t bufferIndex;
+    uint32_t buffer_size_;
+    uint32_t buffer_index_;
+
+    float feedback_;
+    float *buffer_;
 };

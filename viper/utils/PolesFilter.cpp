@@ -3,36 +3,19 @@
 #include <cmath>
 #include <cstring>
 
-PolesFilter::PolesFilter() {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->lower_freq = 160;
-    this->upper_freq = 8000;
+PolesFilter::PolesFilter() :
+    lower_freq_(160),
+    upper_freq_(8000),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE) {
     Reset();
-}
-
-void PolesFilter::Reset() {
-    memset(&this->channels[0], 0, sizeof(channel));
-    memset(&this->channels[1], 0, sizeof(channel));
-    UpdateCoeff();
-}
-
-void PolesFilter::UpdateCoeff() {
-    this->channels[0].lower_angle =
-        (float) this->lower_freq * (float) M_PI / (float) this->samplingRate;
-    this->channels[1].lower_angle =
-        (float) this->lower_freq * (float) M_PI / (float) this->samplingRate;
-    this->channels[0].upper_angle =
-        (float) this->upper_freq * (float) M_PI / (float) this->samplingRate;
-    this->channels[1].upper_angle =
-        (float) this->upper_freq * (float) M_PI / (float) this->samplingRate;
 }
 
 static constexpr float kAntiDenormal = 1e-25f;
 
-static inline void DoFilterSide(
-    channel *side, float sample, float *out1, float *out2, float *out3
+static void FilterSide(
+    channel *side, const float sample, float *out1, float *out2, float *out3
 ) {
-    float oldestSampleIn = side->in[2];
+    const float oldest_sample_in = side->in[2];
     side->in[2] = side->in[1];
     side->in[1] = side->in[0];
     side->in[0] = sample;
@@ -48,25 +31,42 @@ static inline void DoFilterSide(
     side->y[3] += side->upper_angle * (side->y[2] - side->y[3]) + kAntiDenormal;
 
     *out1 = side->x[3];
-    *out2 = oldestSampleIn - side->y[3];
+    *out2 = oldest_sample_in - side->y[3];
     *out3 = side->y[3] - side->x[3];
 }
 
-void PolesFilter::DoFilterLeft(float sample, float *out1, float *out2, float *out3) {
-    DoFilterSide(&this->channels[0], sample, out1, out2, out3);
+void PolesFilter::FilterLeft(const float sample, float *out1, float *out2, float *out3) {
+    FilterSide(&channels_[0], sample, out1, out2, out3);
 }
 
-void PolesFilter::DoFilterRight(float sample, float *out1, float *out2, float *out3) {
-    DoFilterSide(&this->channels[1], sample, out1, out2, out3);
+void PolesFilter::FilterRight(const float sample, float *out1, float *out2, float *out3) {
+    FilterSide(&channels_[1], sample, out1, out2, out3);
 }
 
-void PolesFilter::SetPassFilter(uint32_t lower_freq, uint32_t upper_freq) {
-    this->lower_freq = lower_freq;
-    this->upper_freq = upper_freq;
+void PolesFilter::Reset() {
+    memset(&channels_[0], 0, sizeof(channel));
+    memset(&channels_[1], 0, sizeof(channel));
     UpdateCoeff();
 }
 
-void PolesFilter::SetSamplingRate(uint32_t samplingRate) {
-    this->samplingRate = samplingRate;
+void PolesFilter::SetPassFilter(const uint32_t lower_freq, const uint32_t upper_freq) {
+    lower_freq_ = lower_freq;
+    upper_freq_ = upper_freq;
     UpdateCoeff();
+}
+
+void PolesFilter::SetSamplingRate(const uint32_t sampling_rate) {
+    sampling_rate_ = sampling_rate;
+    UpdateCoeff();
+}
+
+void PolesFilter::UpdateCoeff() {
+    channels_[0].lower_angle = static_cast<float>(lower_freq_) * static_cast<float>(M_PI)
+                               / static_cast<float>(sampling_rate_);
+    channels_[1].lower_angle = static_cast<float>(lower_freq_) * static_cast<float>(M_PI)
+                               / static_cast<float>(sampling_rate_);
+    channels_[0].upper_angle = static_cast<float>(upper_freq_) * static_cast<float>(M_PI)
+                               / static_cast<float>(sampling_rate_);
+    channels_[1].upper_angle = static_cast<float>(upper_freq_) * static_cast<float>(M_PI)
+                               / static_cast<float>(sampling_rate_);
 }

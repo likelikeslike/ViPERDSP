@@ -16,6 +16,12 @@ Crossfeed::Crossfeed() :
     preset_.feedback = 45;
 }
 
+void Crossfeed::ProcessFrames(float *buffer, const uint32_t size) {
+    for (uint32_t i = 0; i < size * 2; i += 2) {
+        FilterSample(buffer + i);
+    }
+}
+
 void Crossfeed::Reset() {
     const uint32_t cutoff = preset_.cutoff;
     uint32_t level = preset_.feedback;
@@ -80,12 +86,6 @@ void Crossfeed::SetSamplingRate(const uint32_t sampling_rate) {
     if (sampling_rate_ != sampling_rate) {
         sampling_rate_ = sampling_rate;
         Reset();
-    }
-}
-
-void Crossfeed::ProcessFrames(float *buffer, const uint32_t size) {
-    for (uint32_t i = 0; i < size * 2; i += 2) {
-        FilterSample(buffer + i);
     }
 }
 

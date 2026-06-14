@@ -1,47 +1,46 @@
 #include "CCombFilter.h"
 #include <cstring>
 
-CCombFilter::CCombFilter() {
-    this->feedback = 0.0;
-    this->buffer = nullptr;
-    this->bufferSize = 0;
-    this->bufferIndex = 0;
-    this->filterStore = 0.0;
-    this->damp = 0;
-    this->damp2 = 0;
+CCombFilter::CCombFilter() :
+    buffer_size_(0),
+    buffer_index_(0),
+    feedback_(0.0f),
+    filter_store_(0.0f),
+    damp_(0.0f),
+    damp2_(0.0f),
+    buffer_(nullptr) {}
+
+float CCombFilter::Process(const float sample) {
+    const float out = buffer_[buffer_index_];
+    filter_store_ = out * damp2_ + filter_store_ * damp_;
+    buffer_[buffer_index_] = sample + filter_store_ * feedback_;
+    buffer_index_ = (buffer_index_ + 1) % buffer_size_;
+    return out;
 }
 
-float CCombFilter::GetDamp() {
-    return this->damp;
+void CCombFilter::Mute() const {
+    memset(buffer_, 0, buffer_size_ * sizeof(float));
 }
 
-float CCombFilter::GetFeedback() {
-    return this->feedback;
+void CCombFilter::SetBuffer(float *buffer, const uint32_t size) {
+    buffer_ = buffer;
+    buffer_size_ = size;
+    buffer_index_ = 0;
 }
 
-void CCombFilter::Mute() {
-    memset(this->buffer, 0, this->bufferSize * sizeof(float));
+void CCombFilter::SetDamp(const float value) {
+    damp_ = value;
+    damp2_ = 1.0f - value;
 }
 
-float CCombFilter::Process(float sample) {
-    float output = this->buffer[this->bufferIndex];
-    this->filterStore = output * this->damp2 + this->filterStore * this->damp;
-    this->buffer[this->bufferIndex] = sample + this->filterStore * this->feedback;
-    this->bufferIndex = (this->bufferIndex + 1) % this->bufferSize;
-    return output;
+void CCombFilter::SetFeedback(const float value) {
+    feedback_ = value;
 }
 
-void CCombFilter::SetBuffer(float *buffer, uint32_t size) {
-    this->buffer = buffer;
-    this->bufferSize = size;
-    this->bufferIndex = 0;
+float CCombFilter::GetDamp() const {
+    return damp_;
 }
 
-void CCombFilter::SetDamp(float damp) {
-    this->damp = damp;
-    this->damp2 = 1.0f - damp;
-}
-
-void CCombFilter::SetFeedback(float feedback) {
-    this->feedback = feedback;
+float CCombFilter::GetFeedback() const {
+    return feedback_;
 }

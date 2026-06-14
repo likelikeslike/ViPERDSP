@@ -61,7 +61,7 @@ static bool ReadWavFile(const char *path, WavData *out) {
         return false;
     }
 
-    const bool is_float = (audio_format == 3);
+    const bool is_float = audio_format == 3;
     const uint32_t bytes_per_sample = bits_per_sample / 8;
 
     if (bytes_per_sample == 0 || num_channels == 0) {
@@ -134,8 +134,7 @@ static bool ReadWavFile(const char *path, WavData *out) {
             return false;
         }
         for (uint32_t i = 0; i < total_samples; i++) {
-            int32_t val =
-                (tmp[i * 3] << 8) | (tmp[i * 3 + 1] << 16) | (tmp[i * 3 + 2] << 24);
+            int32_t val = tmp[i * 3] << 8 | tmp[i * 3 + 1] << 16 | tmp[i * 3 + 2] << 24;
             val >>= 8;
             samples[i] = static_cast<float>(val) / 8388608.0f;
         }

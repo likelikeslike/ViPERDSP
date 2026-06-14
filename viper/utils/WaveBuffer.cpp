@@ -1,131 +1,117 @@
 #include "WaveBuffer.h"
-#include <cstring>
 
-WaveBuffer::WaveBuffer(uint32_t channels, uint32_t length) {
-    this->channels = channels;
-    this->index = 0;
-    this->buffer = std::vector<float>(length * channels);
+WaveBuffer::WaveBuffer(const uint32_t channels, const uint32_t length) :
+    index_(0),
+    channels_(channels),
+    buffer_(length * channels) {}
+
+void WaveBuffer::Reset() {
+    index_ = 0;
+    std::fill(buffer_.begin(), buffer_.end(), 0.0f);
 }
 
-uint32_t WaveBuffer::GetBufferOffset() {
-    return this->index / this->channels;
+uint32_t WaveBuffer::GetBufferOffset() const {
+    return index_ / channels_;
 }
 
-uint32_t WaveBuffer::GetBufferSize() {
-    return this->buffer.size() / this->channels;
+uint32_t WaveBuffer::GetBufferSize() const {
+    return buffer_.size() / channels_;
 }
 
 float *WaveBuffer::GetBuffer() {
-    return this->buffer.data();
+    return buffer_.data();
 }
 
-uint32_t WaveBuffer::PopSamples(uint32_t size, bool resetIndex) {
-    if (this->buffer.empty()) {
+void WaveBuffer::SetBufferOffset(const uint32_t offset) {
+    const uint32_t max_offset = buffer_.size() / channels_;
+    if (offset <= max_offset) {
+        index_ = offset * channels_;
+    }
+}
+
+uint32_t WaveBuffer::PopSamples(const uint32_t size, const bool reset_idx) {
+    if (buffer_.empty()) {
         return 0;
     }
 
-    if (this->channels * size <= this->index) {
-        this->index -= this->channels * size;
+    if (channels_ * size <= index_) {
+        index_ -= channels_ * size;
         memmove(
-            this->buffer.data(),
-            this->buffer.data() + this->channels * size,
-            this->index * sizeof(float)
+            buffer_.data(), buffer_.data() + channels_ * size, index_ * sizeof(float)
         );
         return size;
     }
 
-    if (resetIndex) {
-        uint32_t ret = this->index / this->channels;
-        this->index = 0;
+    if (reset_idx) {
+        const uint32_t ret = index_ / channels_;
+        index_ = 0;
         return ret;
     }
 
     return 0;
 }
 
-uint32_t WaveBuffer::PopSamples(float *dest, uint32_t size, bool resetIndex) {
-    if (this->buffer.empty() || dest == nullptr) {
+uint32_t WaveBuffer::PopSamples(float *dest, const uint32_t size, const bool reset_idx) {
+    if (buffer_.empty() || dest == nullptr) {
         return 0;
     }
 
-    if (this->channels * size <= this->index) {
-        memcpy(dest, this->buffer.data(), this->channels * size * sizeof(float));
-        this->index -= this->channels * size;
+    if (channels_ * size <= index_) {
+        memcpy(dest, buffer_.data(), channels_ * size * sizeof(float));
+        index_ -= channels_ * size;
         memmove(
-            this->buffer.data(),
-            this->buffer.data() + this->channels * size,
-            this->index * sizeof(float)
+            buffer_.data(), buffer_.data() + channels_ * size, index_ * sizeof(float)
         );
         return size;
     }
 
-    if (resetIndex) {
-        uint32_t ret = this->index / this->channels;
-        memcpy(dest, this->buffer.data(), this->index * sizeof(float));
-        this->index = 0;
+    if (reset_idx) {
+        const uint32_t ret = index_ / channels_;
+        memcpy(dest, buffer_.data(), index_ * sizeof(float));
+        index_ = 0;
         return ret;
     }
 
     return 0;
 }
 
-int WaveBuffer::PushSamples(float *source, uint32_t size) {
+int WaveBuffer::PushSamples(const float *source, const uint32_t size) {
     if (size > 0) {
-        uint32_t requiredSize = this->channels * size + this->index;
-        if (requiredSize > this->buffer.size()) {
-            this->buffer.resize(requiredSize);
+        const uint32_t required_size = channels_ * size + index_;
+        if (required_size > buffer_.size()) {
+            buffer_.resize(required_size);
         }
-        memcpy(
-            this->buffer.data() + this->index,
-            source,
-            this->channels * size * sizeof(float)
-        );
-        this->index += this->channels * size;
+        memcpy(buffer_.data() + index_, source, channels_ * size * sizeof(float));
+        index_ += channels_ * size;
     }
 
     return 1;
 }
 
-int WaveBuffer::PushZeros(uint32_t size) {
+int WaveBuffer::PushZeros(const uint32_t size) {
     if (size > 0) {
-        uint32_t requiredSize = this->channels * size + this->index;
-        if (requiredSize > this->buffer.size()) {
-            this->buffer.resize(requiredSize);
+        const uint32_t required_size = channels_ * size + index_;
+        if (required_size > buffer_.size()) {
+            buffer_.resize(required_size);
         }
-        memset(
-            this->buffer.data() + this->index, 0, this->channels * size * sizeof(float)
-        );
-        this->index += this->channels * size;
+        memset(buffer_.data() + index_, 0, channels_ * size * sizeof(float));
+        index_ += channels_ * size;
     }
 
     return 1;
 }
 
-float *WaveBuffer::PushZerosGetBuffer(uint32_t size) {
-    uint32_t oldIndex = this->index;
+float *WaveBuffer::PushZerosGetBuffer(const uint32_t size) {
+    const uint32_t old_idx = index_;
 
     if (size > 0) {
-        uint32_t requiredSize = this->channels * size + this->index;
-        if (requiredSize > this->buffer.size()) {
-            this->buffer.resize(requiredSize);
+        const uint32_t required_size = channels_ * size + index_;
+        if (required_size > buffer_.size()) {
+            buffer_.resize(required_size);
         }
-        memset(
-            this->buffer.data() + this->index, 0, this->channels * size * sizeof(float)
-        );
-        this->index += this->channels * size;
+        memset(buffer_.data() + index_, 0, channels_ * size * sizeof(float));
+        index_ += channels_ * size;
     }
 
-    return this->buffer.data() + oldIndex;
-}
-
-void WaveBuffer::Reset() {
-    this->index = 0;
-    std::fill(this->buffer.begin(), this->buffer.end(), 0.0f);
-}
-
-void WaveBuffer::SetBufferOffset(uint32_t offset) {
-    uint32_t maxOffset = this->buffer.size() / this->channels;
-    if (offset <= maxOffset) {
-        this->index = offset * this->channels;
-    }
+    return buffer_.data() + old_idx;
 }

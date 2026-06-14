@@ -1,27 +1,29 @@
 #pragma once
 
-#include <cstdint>
 #include <vector>
 
 class AdaptiveBuffer {
 public:
     AdaptiveBuffer(uint32_t channels, uint32_t length);
 
-    void FlushBuffer();
-    uint32_t GetBufferLength() const;
-    uint32_t GetBufferOffset() const;
+    [[nodiscard]] uint32_t GetBufferLength() const;
+    [[nodiscard]] uint32_t GetBufferOffset() const;
     float *GetBuffer();
-    uint32_t GetChannels() const;
+    [[nodiscard]] uint32_t GetChannels() const;
+
+    void SetBufferOffset(uint32_t value);
+
     void PanFrames(float left, float right);
     int PopFrames(float *frames, uint32_t length);
     int PushFrames(const float *frames, uint32_t length);
-    int PushZero(uint32_t length);
     void ScaleFrames(float scale);
-    void SetBufferOffset(uint32_t offset);
+    int PushZero(uint32_t length);
+    void FlushBuffer();
 
 private:
-    std::vector<float> buffer;
-    uint32_t length;
-    uint32_t offset;
-    uint32_t channels;
+    uint32_t length_;
+    uint32_t offset_;
+    uint32_t channels_;
+
+    std::vector<float> buffer_;
 };

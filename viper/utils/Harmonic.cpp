@@ -2,67 +2,57 @@
 #include <cmath>
 #include <cstring>
 
-static const float HARMONIC_DEFAULT[] = {
-    1.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
+static constexpr float kHarmonicDefault[] = {
+    1.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
+    0.0f,
 };
 
 Harmonic::Harmonic() {
-    UpdateCoeffs(HARMONIC_DEFAULT);
+    UpdateCoeffs(kHarmonicDefault);
     Reset();
 }
 
-double Harmonic::Process(double sample) {
-    double prevLast = this->lastProcessed;
+double Harmonic::Process(const double sample) {
+    const double prev_last = last_processed_;
 
-    this->lastProcessed =
-        (this->coeffs[0]
-         + sample
-               * (this->coeffs[1]
-                  + sample
-                        * (this->coeffs[2]
-                           + sample
-                                 * (this->coeffs[3]
-                                    + sample
-                                          * (this->coeffs[4]
-                                             + sample
-                                                   * (this->coeffs[5]
-                                                      + sample
-                                                            * (this->coeffs[6]
-                                                               + sample
-                                                                     * (this->coeffs[7]
-                                                                        + sample
-                                                                              * (this->coeffs
-                                                                                     [8]
-                                                                                 + sample
-                                                                                       * (this->coeffs
-                                                                                              [9]
-                                                                                          + sample
-                                                                                                * (this->coeffs
-                                                                                                       [10])))))))))));
+    const double x = sample;
+    const float *c = coeffs_;
+    double y = c[10];
 
-    this->prevOut = (this->lastProcessed + this->prevOut * 0.999) - prevLast;
+    y = fma(x, y, c[9]);
+    y = fma(x, y, c[8]);
+    y = fma(x, y, c[7]);
+    y = fma(x, y, c[6]);
+    y = fma(x, y, c[5]);
+    y = fma(x, y, c[4]);
+    y = fma(x, y, c[3]);
+    y = fma(x, y, c[2]);
+    y = fma(x, y, c[1]);
+    y = fma(x, y, c[0]);
 
-    if (this->sampleCounter < this->biggestCoeff) {
-        this->sampleCounter++;
+    last_processed_ = y;
+    prev_out_ = last_processed_ + prev_out_ * 0.999 - prev_last;
+
+    if (sample_counter_ < biggest_coeff_) {
+        sample_counter_++;
         return 0.0;
     }
 
-    return this->prevOut;
+    return prev_out_;
 }
 
 void Harmonic::Reset() {
-    this->lastProcessed = 0.0;
-    this->sampleCounter = 0;
-    this->prevOut = 0.0;
+    last_processed_ = 0.0;
+    sample_counter_ = 0;
+    prev_out_ = 0.0;
 }
 
 void Harmonic::SetHarmonics(const float *coefficients) {
@@ -70,52 +60,52 @@ void Harmonic::SetHarmonics(const float *coefficients) {
     Reset();
 }
 
-void Harmonic::UpdateCoeffs(const float *coefficients) {
-    float unkarr1[11];
-    float unkarr2[11];
+void Harmonic::UpdateCoeffs(const float *coeffs) {
+    float arr1[11];
+    float arr2[11];
 
-    memset(unkarr1, 0, 11 * sizeof(float));
+    memset(arr1, 0, 11 * sizeof(float));
 
-    float biggestCoeffVal = 0.0;
-    float absCoeffSum = 0.0;
+    float biggest_coeff = 0.0f;
+    float abs_coeff_sum = 0.0f;
     for (uint32_t i = 0; i < 10; i++) {
-        float absCoeffVal = abs(coefficients[i]);
-        absCoeffSum += absCoeffVal;
-        if (absCoeffVal > biggestCoeffVal) {
-            biggestCoeffVal = absCoeffVal;
+        const float abs_coeff = abs(coeffs[i]);
+        abs_coeff_sum += abs_coeff;
+        if (abs_coeff > biggest_coeff) {
+            biggest_coeff = abs_coeff;
         }
     }
-    this->biggestCoeff = (uint32_t) (biggestCoeffVal * 10000.0);
+    biggest_coeff_ = static_cast<uint32_t>(biggest_coeff * 10000.0f);
 
-    memcpy(unkarr1 + 1, coefficients, 10 * sizeof(float));
+    memcpy(arr1 + 1, coeffs, 10 * sizeof(float));
 
-    float normFactor = 1.0;
-    if (absCoeffSum > 1.0) {
-        normFactor = 1.0f / absCoeffSum;
+    float norm_factor = 1.0f;
+    if (abs_coeff_sum > 1.0f) {
+        norm_factor = 1.0f / abs_coeff_sum;
     }
     for (uint32_t i = 1; i < 11; i++) {
-        unkarr1[i] *= normFactor;
+        arr1[i] *= norm_factor;
     }
 
-    memset(this->coeffs, 0, 11 * sizeof(float));
-    memset(unkarr2, 0, 11 * sizeof(float));
+    memset(coeffs_, 0, 11 * sizeof(float));
+    memset(arr2, 0, 11 * sizeof(float));
 
-    this->coeffs[10] = unkarr1[10];
+    coeffs_[10] = arr1[10];
 
     for (uint32_t i = 2; i < 11; i++) {
         for (uint32_t j = 0; j < i; j++) {
-            float tmp = unkarr2[i - j];
-            unkarr2[i - j] = this->coeffs[i - j];
-            this->coeffs[i - j] = this->coeffs[i - j - 1] * 2.0f - tmp;
+            const float tmp = arr2[i - j];
+            arr2[i - j] = coeffs_[i - j];
+            coeffs_[i - j] = coeffs_[i - j - 1] * 2.0f - tmp;
         }
-        float tmp = unkarr1[10 - i + 1] - unkarr2[0];
-        unkarr2[0] = this->coeffs[0];
-        this->coeffs[0] = tmp;
+        const float tmp = arr1[10 - i + 1] - arr2[0];
+        arr2[0] = coeffs_[0];
+        coeffs_[0] = tmp;
     }
 
     for (uint32_t i = 1; i < 11; i++) {
-        this->coeffs[10 - i + 1] = this->coeffs[10 - i] - unkarr2[10 - i + 1];
+        coeffs_[10 - i + 1] = coeffs_[10 - i] - arr2[10 - i + 1];
     }
 
-    this->coeffs[0] = unkarr1[0] / 2.0f - unkarr2[0];
+    coeffs_[0] = arr1[0] / 2.0f - arr2[0];
 }
