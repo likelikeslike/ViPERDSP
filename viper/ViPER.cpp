@@ -113,6 +113,12 @@ ViPER::ViPER() :
 }
 
 void ViPER::Process(std::vector<float> &buffer, const uint32_t size) {
+    if (pending_effects_reset_.exchange(false, std::memory_order_acquire)) {
+        pending_buffers_reset_.store(false, std::memory_order_relaxed);
+        ResetAllEffects();
+    } else if (pending_buffers_reset_.exchange(false, std::memory_order_acquire)) {
+        ResetBuffers();
+    }
     process_frame_count_ += size;
 
     float *tmp_buf;
@@ -933,6 +939,10 @@ void ViPER::DispatchRawParam(
     }
 }
 
+void ViPER::RequestEffectsReset() {
+    pending_effects_reset_.store(true, std::memory_order_release);
+}
+
 void ViPER::ResetAllEffects() {
     adaptive_buffer_.FlushBuffer();
 
@@ -1008,4 +1018,14 @@ void ViPER::ResetAllEffects() {
     for (auto &software_limiter : software_limiters_) {
         software_limiter.Reset();
     }
+}
+
+void ViPER::RequestBuffersReset() {
+    pending_buffers_reset_.store(true, std::memory_order_release);
+}
+
+void ViPER::ResetBuffers() {
+    adaptive_buffer_.FlushBuffer();
+    wave_buffer_.Reset();
+    reverberation_.Reset();
 }

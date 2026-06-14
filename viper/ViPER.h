@@ -43,13 +43,24 @@ public:
         signed char *arr
     );
 
+    void RequestEffectsReset();
     void ResetAllEffects();
-    void SetSamplingRate(uint32_t rate) { sampling_rate_ = rate; }
+
+    void RequestBuffersReset();
+    void ResetBuffers();
+
     [[nodiscard]] uint32_t GetSamplingRate() const { return sampling_rate_; }
     [[nodiscard]] uint64_t GetProcessedFrames() const { return process_frame_count_; }
-    uint32_t GetConvolverKernelID() { return convolver_.GetKernelID(); }
+    [[nodiscard]] uint32_t GetConvolverKernelID() const {
+        return convolver_.GetKernelID();
+    }
+
+    void SetSamplingRate(const uint32_t rate) { sampling_rate_ = rate; }
 
 private:
+    std::atomic<bool> pending_effects_reset_{false};
+    std::atomic<bool> pending_buffers_reset_{false};
+
     uint32_t sampling_rate_;
     uint64_t process_frame_count_;
 
