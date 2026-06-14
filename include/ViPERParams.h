@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #ifndef VERSION_CODE
 #define VERSION_CODE 00000000
 #endif
@@ -162,3 +164,409 @@ constexpr int kParamDynamicEqBandRelease = 0x102A7;
 constexpr int kParamDynamicEqBandFilterType = 0x102A8;
 
 } // namespace viper::params
+
+namespace viper {
+
+struct MasterLimiterParams {
+    float threshold = 1.0f;     // 0..1
+    float output_volume = 1.0f; // 0..1
+    float channel_pan = 0.0f;   // -1..+1
+
+    bool operator==(const MasterLimiterParams &other) const {
+        return threshold == other.threshold && output_volume == other.output_volume
+               && channel_pan == other.channel_pan;
+    }
+};
+
+struct PlaybackGainControlParams {
+    bool enable = false;
+    float strength = 0.0f;         // 0..1
+    float max_gain = 0.0f;         // 0..1
+    float output_threshold = 0.0f; // 0..1
+
+    bool operator==(const PlaybackGainControlParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && strength == other.strength
+               && max_gain == other.max_gain
+               && output_threshold == other.output_threshold;
+    }
+};
+
+struct LufsParams {
+    bool enable = false;
+    float target = 0.0f;
+    float max_gain = 0.0f; // dB
+    int speed = 0;
+
+    bool operator==(const LufsParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && target == other.target
+               && max_gain == other.max_gain && speed == other.speed;
+    }
+};
+
+struct FetCompressorParams {
+    bool enable = false;
+    float threshold = 0.0f; // 0..1
+    float ratio = 0.0f;     // 0..1
+    float knee = 0.0f;      // 0..1
+    bool knee_auto = false;
+    float gain = 0.0f; // 0..1
+    bool gain_auto = false;
+    float attack = 0.0f; // 0..1
+    bool attack_auto = false;
+    float release = 0.0f; // 0..1
+    bool release_auto = false;
+    float knee_multi = 0.0f;
+    float max_attack = 0.0f;
+    float max_release = 0.0f;
+    float crest = 0.0f;
+    float adapt = 0.0f;
+    bool no_clip = false;
+
+    bool operator==(const FetCompressorParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && threshold == other.threshold
+               && ratio == other.ratio && knee == other.knee
+               && knee_auto == other.knee_auto && gain == other.gain
+               && gain_auto == other.gain_auto && attack == other.attack
+               && attack_auto == other.attack_auto && release == other.release
+               && release_auto == other.release_auto && knee_multi == other.knee_multi
+               && max_attack == other.max_attack && max_release == other.max_release
+               && crest == other.crest && adapt == other.adapt
+               && no_clip == other.no_clip;
+    }
+};
+
+struct BassParams {
+    bool enable = false;
+    int mode = 0;
+    uint32_t frequency = 0; // Hz
+    float gain = 0.0f;      // 0..1
+    bool anti_pop = false;
+
+    bool operator==(const BassParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && mode == other.mode
+               && frequency == other.frequency && gain == other.gain
+               && anti_pop == other.anti_pop;
+    }
+};
+
+struct BassMonoParams {
+    bool enable = false;
+    int mode = 0;
+    uint32_t frequency = 0;
+    float gain = 0.0f;
+    bool anti_pop = false;
+
+    bool operator==(const BassMonoParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && mode == other.mode
+               && frequency == other.frequency && gain == other.gain
+               && anti_pop == other.anti_pop;
+    }
+};
+
+struct PsychoacousticBassParams {
+    bool enable = false;
+    uint32_t cutoff = 0; // Hz
+    uint32_t intensity = 0;
+    uint32_t harmonic_order = 0;
+    uint32_t original_level = 0;
+
+    bool operator==(const PsychoacousticBassParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && cutoff == other.cutoff
+               && intensity == other.intensity && harmonic_order == other.harmonic_order
+               && original_level == other.original_level;
+    }
+};
+
+struct SpectrumExtensionParams {
+    bool enable = false;
+    int strength = 0;
+    float exciter = 0.0f; // 0..1
+
+    bool operator==(const SpectrumExtensionParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && strength == other.strength
+               && exciter == other.exciter;
+    }
+};
+
+struct EqualizerParams {
+    bool enable = false;
+    uint32_t band_count = 0;
+    std::array<float, 31> band_levels{};
+
+    bool operator==(const EqualizerParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && band_count == other.band_count
+               && band_levels == other.band_levels;
+    }
+};
+
+struct ConvolverParams {
+    bool enable = false;
+    float cross_channel = 0.0f; // 0..1
+
+    bool operator==(const ConvolverParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && cross_channel == other.cross_channel;
+    }
+};
+
+using BiquadSection = std::array<float, 5>;
+
+struct DdcParams {
+    bool enable = false;
+
+    bool operator==(const DdcParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable;
+    }
+};
+
+struct FieldSurroundParams {
+    bool enable = false;
+    float widening = 0.0f;  // 0..1
+    float mid_image = 0.0f; // 0..1
+    short depth = 0;
+
+    bool operator==(const FieldSurroundParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && widening == other.widening
+               && mid_image == other.mid_image && depth == other.depth;
+    }
+};
+
+struct DiffSurroundParams {
+    bool enable = false;
+    float delay = 0.0f; // 0..1
+    bool reverse = false;
+    float wet_dry_mix = 0.0f; // 0..1
+    float lp_cutoff = 0.0f;   // Hz
+
+    bool operator==(const DiffSurroundParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && delay == other.delay && reverse == other.reverse
+               && wet_dry_mix == other.wet_dry_mix && lp_cutoff == other.lp_cutoff;
+    }
+};
+
+struct StereoImagerParams {
+    bool enable = false;
+    float low_width = 0.0f;      // percent: 0..200
+    float mid_width = 0.0f;      // percent: 0..200
+    float high_width = 0.0f;     // percent: 0..200
+    float low_crossover = 0.0f;  // Hz
+    float high_crossover = 0.0f; // Hz
+
+    bool operator==(const StereoImagerParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && low_width == other.low_width
+               && mid_width == other.mid_width && high_width == other.high_width
+               && low_crossover == other.low_crossover
+               && high_crossover == other.high_crossover;
+    }
+};
+
+struct HeadphoneSurroundParams {
+    bool enable = false;
+    int quality = 0;
+
+    bool operator==(const HeadphoneSurroundParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && quality == other.quality;
+    }
+};
+
+struct ReverbParams {
+    bool enable = false;
+    float room_size = 0.0f; // 0..1
+    float width = 0.0f;     // 0..1
+    float damp = 0.0f;      // 0..1
+    float wet = 0.0f;       // 0..1
+    float dry = 0.0f;       // 0..1
+
+    bool operator==(const ReverbParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && room_size == other.room_size
+               && width == other.width && damp == other.damp && wet == other.wet
+               && dry == other.dry;
+    }
+};
+
+struct DynamicSystemParams {
+    bool enable = false;
+    int x_coeff_low = 0;
+    int x_coeff_high = 0;
+    int y_coeff_low = 0;
+    int y_coeff_high = 0;
+    float side_gain_low = 0.0f;  // 0..1
+    float side_gain_high = 0.0f; // 0..1
+    float strength = 0.0f;       // 0..1
+
+    bool operator==(const DynamicSystemParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && x_coeff_low == other.x_coeff_low
+               && x_coeff_high == other.x_coeff_high && y_coeff_low == other.y_coeff_low
+               && y_coeff_high == other.y_coeff_high
+               && side_gain_low == other.side_gain_low
+               && side_gain_high == other.side_gain_high && strength == other.strength;
+    }
+};
+
+struct ClarityParams {
+    bool enable = false;
+    int mode = 0; // 0..1
+    float gain = 0.0f;
+
+    bool operator==(const ClarityParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && mode == other.mode && gain == other.gain;
+    }
+};
+
+struct CureParams {
+    bool enable = false;
+    int crossfeed_preset = 0; // 0..2
+
+    bool operator==(const CureParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && crossfeed_preset == other.crossfeed_preset;
+    }
+};
+
+struct TubeSimulatorParams {
+    bool enable = false;
+
+    bool operator==(const TubeSimulatorParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable;
+    }
+};
+
+struct AnalogXParams {
+    bool enable = false;
+    int mode = 0;
+
+    bool operator==(const AnalogXParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && mode == other.mode;
+    }
+};
+
+struct SpeakerCorrectionParams {
+    bool enable = false;
+
+    bool operator==(const SpeakerCorrectionParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable;
+    }
+};
+
+struct MultibandCompressorBandParams {
+    bool enable = false;
+    float threshold = 0.0f;
+    float ratio = 0.0f;
+    float knee = 0.0f;
+    bool knee_auto = false;
+    float gain = 0.0f;
+    bool gain_auto = false;
+    float attack = 0.0f;
+    bool attack_auto = false;
+    float release = 0.0f;
+    bool release_auto = false;
+    float knee_multi = 0.0f;
+    float max_attack = 0.0f;
+    float max_release = 0.0f;
+    float crest = 0.0f;
+    float adapt = 0.0f;
+    bool no_clip = false;
+
+    bool operator==(const MultibandCompressorBandParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && threshold == other.threshold
+               && ratio == other.ratio && knee == other.knee
+               && knee_auto == other.knee_auto && gain == other.gain
+               && gain_auto == other.gain_auto && attack == other.attack
+               && attack_auto == other.attack_auto && release == other.release
+               && release_auto == other.release_auto && knee_multi == other.knee_multi
+               && max_attack == other.max_attack && max_release == other.max_release
+               && crest == other.crest && adapt == other.adapt
+               && no_clip == other.no_clip;
+    }
+};
+
+struct MultibandCompressorParams {
+    bool enable = false;
+    uint32_t band_count = 0;
+    std::array<float, 5> crossover_frequencies{}; // Hz
+    std::array<MultibandCompressorBandParams, 5> bands{};
+
+    bool operator==(const MultibandCompressorParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && band_count == other.band_count
+               && crossover_frequencies == other.crossover_frequencies
+               && bands == other.bands;
+    }
+};
+
+struct DynamicEqBandParams {
+    float frequency = 0.0f; // Hz
+    float q = 0.0f;
+    float gain = 0.0f;      // dB
+    float threshold = 0.0f; // dB
+    float attack = 0.0f;    // ms
+    float release = 0.0f;   // ms
+    int filter_type = 0;
+
+    bool operator==(const DynamicEqBandParams &other) const {
+        return frequency == other.frequency && q == other.q && gain == other.gain
+               && threshold == other.threshold && attack == other.attack
+               && release == other.release && filter_type == other.filter_type;
+    }
+};
+
+struct DynamicEqParams {
+    bool enable = false;
+    uint32_t band_count = 0;
+    std::array<DynamicEqBandParams, 8> bands{};
+
+    bool operator==(const DynamicEqParams &other) const {
+        if (!enable && !other.enable) return true;
+        return enable == other.enable && band_count == other.band_count
+               && bands == other.bands;
+    }
+};
+
+struct ViPERParams {
+    MasterLimiterParams master_limiter;
+    PlaybackGainControlParams playback_gain_control;
+    LufsParams lufs;
+    FetCompressorParams fet_compressor;
+    BassParams bass;
+    BassMonoParams bass_mono;
+    PsychoacousticBassParams psychoacoustic_bass;
+    SpectrumExtensionParams spectrum_extension;
+    EqualizerParams equalizer;
+    ConvolverParams convolver;
+    DdcParams ddc;
+    FieldSurroundParams field_surround;
+    DiffSurroundParams diff_surround;
+    StereoImagerParams stereo_imager;
+    HeadphoneSurroundParams headphone_surround;
+    ReverbParams reverb;
+    DynamicSystemParams dynamic_system;
+    ClarityParams clarity;
+    CureParams cure;
+    TubeSimulatorParams tube_simulator;
+    AnalogXParams analog_x;
+    SpeakerCorrectionParams speaker_correction;
+    MultibandCompressorParams multiband_compressor;
+    DynamicEqParams dynamic_eq;
+};
+
+} // namespace viper
