@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ViPERParams.h"
 #include "effects/AnalogX.h"
 #include "effects/ColorfulMusic.h"
 #include "effects/Convolver.h"
@@ -49,6 +50,49 @@ public:
     void RequestBuffersReset();
     void ResetBuffers();
 
+    void ApplyParams(const viper::ViPERParams &params);
+    void ApplyMasterLimiter(const viper::MasterLimiterParams &p);
+    void ApplyPlaybackGainControl(const viper::PlaybackGainControlParams &p);
+    void ApplyLufs(const viper::LufsParams &p);
+    void ApplyFetCompressor(const viper::FetCompressorParams &p);
+    void ApplyBass(const viper::BassParams &p);
+    void ApplyBassMono(const viper::BassMonoParams &p);
+    void ApplyPsychoacousticBass(const viper::PsychoacousticBassParams &p);
+    void ApplySpectrumExtension(const viper::SpectrumExtensionParams &p);
+    void ApplyEqualizer(const viper::EqualizerParams &p);
+    void ApplyConvolver(const viper::ConvolverParams &p);
+    void ApplyDdc(const viper::DdcParams &p);
+    void ApplyFieldSurround(const viper::FieldSurroundParams &p);
+    void ApplyDiffSurround(const viper::DiffSurroundParams &p);
+    void ApplyStereoImager(const viper::StereoImagerParams &p);
+    void ApplyHeadphoneSurround(const viper::HeadphoneSurroundParams &p);
+    void ApplyReverb(const viper::ReverbParams &p);
+    void ApplyDynamicSystem(const viper::DynamicSystemParams &p);
+    void ApplyClarity(const viper::ClarityParams &p);
+    void ApplyCure(const viper::CureParams &p);
+    void ApplyTubeSimulator(const viper::TubeSimulatorParams &p);
+    void ApplyAnalogX(const viper::AnalogXParams &p);
+    void ApplySpeakerCorrection(const viper::SpeakerCorrectionParams &p);
+    void ApplyMultibandCompressor(const viper::MultibandCompressorParams &p);
+    void ApplyDynamicEq(const viper::DynamicEqParams &p);
+
+    // Typed Convolver kernel loader.
+    std::optional<uint32_t> LoadConvolverKernel(
+        const float *samples, uint32_t frame_count, uint32_t channels, uint32_t kernel_id
+    );
+
+    // Typed wrapper for the kernel-unload path.
+    void UnloadConvolverKernel();
+
+    // Typed DDC coefficient loader.
+    void LoadDdcCoefficients(
+        const viper::BiquadSection *sections44100,
+        const viper::BiquadSection *sections48000,
+        uint32_t section_count
+    );
+
+    const viper::ViPERParams &CurrentParams() const { return last_applied_; }
+
     [[nodiscard]] uint32_t GetSamplingRate() const { return sampling_rate_; }
     [[nodiscard]] uint64_t GetProcessedFrames() const { return process_frame_count_; }
     [[nodiscard]] uint32_t GetConvolverKernelID() const {
@@ -95,4 +139,6 @@ private:
     AnalogX analog_x_;
     SpeakerCorrection speaker_correction_;
     std::array<SoftwareLimiter, 2> software_limiters_;
+
+    viper::ViPERParams last_applied_;
 };

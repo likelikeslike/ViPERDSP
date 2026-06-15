@@ -2,8 +2,20 @@
 #include "../include/ViPERParams.h"
 #include "../include/log.h"
 #include "constants.h"
+#include "utils/Crc32.h"
 
 using namespace viper::params;
+
+template <typename T>
+bool BitEqual(const T &a, const T &b) {
+    static_assert(
+        std::is_trivially_copyable_v<T>,
+        "ViPERParams sub-structs must be trivially copyable"
+    );
+    return std::memcmp(&a, &b, sizeof(T)) == 0;
+}
+
+constexpr uint32_t kKernelChunkFloats = 2046;
 
 ViPER::ViPER() :
     sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
@@ -1028,4 +1040,370 @@ void ViPER::ResetBuffers() {
     adaptive_buffer_.FlushBuffer();
     wave_buffer_.Reset();
     reverberation_.Reset();
+}
+
+void ViPER::ApplyParams(const viper::ViPERParams &params) {
+    if (!(params.master_limiter == last_applied_.master_limiter)) {
+        ApplyMasterLimiter(params.master_limiter);
+    }
+    if (!(params.playback_gain_control == last_applied_.playback_gain_control)) {
+        ApplyPlaybackGainControl(params.playback_gain_control);
+    }
+    if (!(params.lufs == last_applied_.lufs)) {
+        ApplyLufs(params.lufs);
+    }
+    if (!(params.fet_compressor == last_applied_.fet_compressor)) {
+        ApplyFetCompressor(params.fet_compressor);
+    }
+    if (!(params.bass == last_applied_.bass)) {
+        ApplyBass(params.bass);
+    }
+    if (!(params.bass_mono == last_applied_.bass_mono)) {
+        ApplyBassMono(params.bass_mono);
+    }
+    if (!(params.psychoacoustic_bass == last_applied_.psychoacoustic_bass)) {
+        ApplyPsychoacousticBass(params.psychoacoustic_bass);
+    }
+    if (!(params.spectrum_extension == last_applied_.spectrum_extension)) {
+        ApplySpectrumExtension(params.spectrum_extension);
+    }
+    if (!(params.equalizer == last_applied_.equalizer)) {
+        ApplyEqualizer(params.equalizer);
+    }
+    if (!(params.convolver == last_applied_.convolver)) {
+        ApplyConvolver(params.convolver);
+    }
+    if (!(params.ddc == last_applied_.ddc)) {
+        ApplyDdc(params.ddc);
+    }
+    if (!(params.field_surround == last_applied_.field_surround)) {
+        ApplyFieldSurround(params.field_surround);
+    }
+    if (!(params.diff_surround == last_applied_.diff_surround)) {
+        ApplyDiffSurround(params.diff_surround);
+    }
+    if (!(params.stereo_imager == last_applied_.stereo_imager)) {
+        ApplyStereoImager(params.stereo_imager);
+    }
+    if (!(params.headphone_surround == last_applied_.headphone_surround)) {
+        ApplyHeadphoneSurround(params.headphone_surround);
+    }
+    if (!(params.reverb == last_applied_.reverb)) {
+        ApplyReverb(params.reverb);
+    }
+    if (!(params.dynamic_system == last_applied_.dynamic_system)) {
+        ApplyDynamicSystem(params.dynamic_system);
+    }
+    if (!(params.clarity == last_applied_.clarity)) {
+        ApplyClarity(params.clarity);
+    }
+    if (!(params.cure == last_applied_.cure)) {
+        ApplyCure(params.cure);
+    }
+    if (!(params.tube_simulator == last_applied_.tube_simulator)) {
+        ApplyTubeSimulator(params.tube_simulator);
+    }
+    if (!(params.analog_x == last_applied_.analog_x)) {
+        ApplyAnalogX(params.analog_x);
+    }
+    if (!(params.speaker_correction == last_applied_.speaker_correction)) {
+        ApplySpeakerCorrection(params.speaker_correction);
+    }
+    if (!(params.multiband_compressor == last_applied_.multiband_compressor)) {
+        ApplyMultibandCompressor(params.multiband_compressor);
+    }
+    if (!(params.dynamic_eq == last_applied_.dynamic_eq)) {
+        ApplyDynamicEq(params.dynamic_eq);
+    }
+}
+
+void ViPER::ApplyMasterLimiter(const viper::MasterLimiterParams &p) {
+    software_limiters_[0].SetGate(p.threshold);
+    software_limiters_[1].SetGate(p.threshold);
+    frame_scale_ = p.output_volume;
+    if (p.channel_pan < 0.0f) {
+        left_pan_ = 1.0f;
+        right_pan_ = 1.0f + p.channel_pan;
+    } else {
+        left_pan_ = 1.0f - p.channel_pan;
+        right_pan_ = 1.0f;
+    }
+    last_applied_.master_limiter = p;
+}
+
+void ViPER::ApplyPlaybackGainControl(const viper::PlaybackGainControlParams &p) {
+    playback_gain_.SetEnable(p.enable);
+    playback_gain_.SetRatio(p.strength);
+    playback_gain_.SetMaxGainFactor(p.max_gain);
+    playback_gain_.SetVolume(p.output_threshold);
+    last_applied_.playback_gain_control = p;
+}
+
+void ViPER::ApplyLufs(const viper::LufsParams &p) {
+    lufs_targeting_.SetEnable(p.enable);
+    lufs_targeting_.SetTargetLUFS(p.target);
+    lufs_targeting_.SetMaxGain(p.max_gain);
+    lufs_targeting_.SetSpeed(p.speed);
+    last_applied_.lufs = p;
+}
+
+void ViPER::ApplyFetCompressor(const viper::FetCompressorParams &p) {
+    fet_compressor_.SetEnable(p.enable);
+    fet_compressor_.SetThreshold(p.threshold);
+    fet_compressor_.SetRatio(p.ratio);
+    fet_compressor_.SetKnee(p.knee);
+    fet_compressor_.SetKneeAuto(p.knee_auto);
+    fet_compressor_.SetGain(p.gain);
+    fet_compressor_.SetGainAuto(p.gain_auto);
+    fet_compressor_.SetAttack(p.attack);
+    fet_compressor_.SetAttackAuto(p.attack_auto);
+    fet_compressor_.SetRelease(p.release);
+    fet_compressor_.SetReleaseAuto(p.release_auto);
+    fet_compressor_.SetKneeMulti(p.knee_multi);
+    fet_compressor_.SetMaxAttack(p.max_attack);
+    fet_compressor_.SetMaxRelease(p.max_release);
+    fet_compressor_.SetCrest(p.crest);
+    fet_compressor_.SetAdapt(p.adapt);
+    fet_compressor_.SetNoClip(p.no_clip);
+    last_applied_.fet_compressor = p;
+}
+
+void ViPER::ApplyBass(const viper::BassParams &p) {
+    viper_bass_.SetEnable(p.enable);
+    viper_bass_.SetProcessMode(static_cast<ViPERBass::ProcessMode>(p.mode));
+    viper_bass_.SetFrequency(p.frequency);
+    viper_bass_.SetBassFactor(p.gain);
+    viper_bass_.SetAntiPop(p.anti_pop);
+    last_applied_.bass = p;
+}
+
+void ViPER::ApplyBassMono(const viper::BassMonoParams &p) {
+    viper_bass_mono_.SetEnable(p.enable);
+    viper_bass_mono_.SetProcessMode(static_cast<ViPERBassMono::ProcessMode>(p.mode));
+    viper_bass_mono_.SetFrequency(p.frequency);
+    viper_bass_mono_.SetBassFactor(p.gain);
+    viper_bass_mono_.SetAntiPop(p.anti_pop);
+    last_applied_.bass_mono = p;
+}
+
+void ViPER::ApplyPsychoacousticBass(const viper::PsychoacousticBassParams &p) {
+    psychoacoustic_bass_.SetEnable(p.enable);
+    psychoacoustic_bass_.SetCutoff(p.cutoff);
+    psychoacoustic_bass_.SetIntensity(p.intensity);
+    psychoacoustic_bass_.SetHarmonicOrder(p.harmonic_order);
+    psychoacoustic_bass_.SetOriginalBassLevel(p.original_level);
+    last_applied_.psychoacoustic_bass = p;
+}
+
+void ViPER::ApplySpectrumExtension(const viper::SpectrumExtensionParams &p) {
+    spectrum_extend_.SetEnable(p.enable);
+    spectrum_extend_.SetReferenceFrequency(p.strength);
+    spectrum_extend_.SetExciter(p.exciter);
+    last_applied_.spectrum_extension = p;
+}
+
+void ViPER::ApplyEqualizer(const viper::EqualizerParams &p) {
+    iir_filter_.SetEnable(p.enable);
+    iir_filter_.SetBandCount(p.band_count);
+    for (uint32_t i = 0; i < p.band_count && i < p.band_levels.size(); i++) {
+        iir_filter_.SetBandLevel(i, p.band_levels[i]);
+    }
+    last_applied_.equalizer = p;
+}
+
+void ViPER::ApplyConvolver(const viper::ConvolverParams &p) {
+    convolver_.SetEnable(p.enable);
+    convolver_.SetCrossChannel(p.cross_channel);
+    last_applied_.convolver = p;
+}
+
+void ViPER::ApplyDdc(const viper::DdcParams &p) {
+    viper_ddc_.SetEnable(p.enable);
+    last_applied_.ddc = p;
+}
+
+void ViPER::ApplyFieldSurround(const viper::FieldSurroundParams &p) {
+    colorful_music_.SetEnable(p.enable);
+    colorful_music_.SetWidenValue(p.widening);
+    colorful_music_.SetMidImageValue(p.mid_image);
+    colorful_music_.SetDepthValue(p.depth);
+    last_applied_.field_surround = p;
+}
+
+void ViPER::ApplyDiffSurround(const viper::DiffSurroundParams &p) {
+    diff_surround_.SetEnable(p.enable);
+    diff_surround_.SetDelayTime(p.delay);
+    diff_surround_.SetReverse(p.reverse);
+    diff_surround_.SetWetDryMix(p.wet_dry_mix);
+    diff_surround_.SetLPCutoff(p.lp_cutoff);
+    last_applied_.diff_surround = p;
+}
+
+void ViPER::ApplyStereoImager(const viper::StereoImagerParams &p) {
+    stereo_imager_.SetEnable(p.enable);
+    stereo_imager_.SetLowWidth(p.low_width);
+    stereo_imager_.SetMidWidth(p.mid_width);
+    stereo_imager_.SetHighWidth(p.high_width);
+    stereo_imager_.SetLowCrossover(p.low_crossover);
+    stereo_imager_.SetHighCrossover(p.high_crossover);
+    last_applied_.stereo_imager = p;
+}
+
+void ViPER::ApplyHeadphoneSurround(const viper::HeadphoneSurroundParams &p) {
+    vhe_.SetEnable(p.enable);
+    vhe_.SetEffectLevel(p.quality);
+    last_applied_.headphone_surround = p;
+}
+
+void ViPER::ApplyReverb(const viper::ReverbParams &p) {
+    reverberation_.SetEnable(p.enable);
+    reverberation_.SetRoomSize(p.room_size);
+    reverberation_.SetWidth(p.width);
+    reverberation_.SetDamp(p.damp);
+    reverberation_.SetWet(p.wet);
+    reverberation_.SetDry(p.dry);
+    last_applied_.reverb = p;
+}
+
+void ViPER::ApplyDynamicSystem(const viper::DynamicSystemParams &p) {
+    dynamic_system_.SetEnable(p.enable);
+    dynamic_system_.SetXCoeffs(p.x_coeff_low, p.x_coeff_high);
+    dynamic_system_.SetYCoeffs(p.y_coeff_low, p.y_coeff_high);
+    dynamic_system_.SetSideGain(p.side_gain_low, p.side_gain_high);
+    dynamic_system_.SetBassGain(p.strength);
+    last_applied_.dynamic_system = p;
+}
+
+void ViPER::ApplyClarity(const viper::ClarityParams &p) {
+    viper_clarity_.SetEnable(p.enable);
+    viper_clarity_.SetProcessMode(static_cast<ViPERClarity::ClarityMode>(p.mode));
+    viper_clarity_.SetClarityGain(p.gain);
+    last_applied_.clarity = p;
+}
+
+void ViPER::ApplyCure(const viper::CureParams &p) {
+    cure_.SetEnable(p.enable);
+    cure_.SetPreset(p.crossfeed_preset);
+    last_applied_.cure = p;
+}
+
+void ViPER::ApplyTubeSimulator(const viper::TubeSimulatorParams &p) {
+    tube_simulator_.SetEnable(p.enable);
+    last_applied_.tube_simulator = p;
+}
+
+void ViPER::ApplyAnalogX(const viper::AnalogXParams &p) {
+    analog_x_.SetEnable(p.enable);
+    analog_x_.SetProcessingModel(p.mode);
+    last_applied_.analog_x = p;
+}
+
+void ViPER::ApplySpeakerCorrection(const viper::SpeakerCorrectionParams &p) {
+    speaker_correction_.SetEnable(p.enable);
+    last_applied_.speaker_correction = p;
+}
+
+void ViPER::ApplyMultibandCompressor(const viper::MultibandCompressorParams &p) {
+    multiband_compressor_.SetEnable(p.enable);
+    multiband_compressor_.SetBandCount(p.band_count);
+    for (uint32_t i = 0; i < p.band_count && i < p.crossover_frequencies.size(); i++) {
+        multiband_compressor_.SetCrossoverFrequency(i, p.crossover_frequencies[i]);
+    }
+    for (uint32_t i = 0; i < p.band_count && i < p.bands.size(); i++) {
+        const auto &b = p.bands[i];
+        multiband_compressor_.SetBandEnable(i, b.enable);
+        multiband_compressor_.SetBandThreshold(i, b.threshold);
+        multiband_compressor_.SetBandRatio(i, b.ratio);
+        multiband_compressor_.SetBandKnee(i, b.knee);
+        multiband_compressor_.SetBandKneeAuto(i, b.knee_auto);
+        multiband_compressor_.SetBandGain(i, b.gain);
+        multiband_compressor_.SetBandGainAuto(i, b.gain_auto);
+        multiband_compressor_.SetBandAttack(i, b.attack);
+        multiband_compressor_.SetBandAttackAuto(i, b.attack_auto);
+        multiband_compressor_.SetBandRelease(i, b.release);
+        multiband_compressor_.SetBandReleaseAuto(i, b.release_auto);
+        multiband_compressor_.SetBandKneeMulti(i, b.knee_multi);
+        multiband_compressor_.SetBandMaxAttack(i, b.max_attack);
+        multiband_compressor_.SetBandMaxRelease(i, b.max_release);
+        multiband_compressor_.SetBandCrest(i, b.crest);
+        multiband_compressor_.SetBandAdapt(i, b.adapt);
+        multiband_compressor_.SetBandNoClip(i, b.no_clip);
+    }
+    last_applied_.multiband_compressor = p;
+}
+
+void ViPER::ApplyDynamicEq(const viper::DynamicEqParams &p) {
+    dynamic_eq_.SetEnable(p.enable);
+    dynamic_eq_.SetBandCount(p.band_count);
+    for (uint32_t i = 0; i < p.band_count && i < p.bands.size(); i++) {
+        const auto &b = p.bands[i];
+        dynamic_eq_.SetBandFrequency(i, b.frequency);
+        dynamic_eq_.SetBandQ(i, b.q);
+        dynamic_eq_.SetBandGain(i, b.gain);
+        dynamic_eq_.SetBandThreshold(i, b.threshold);
+        dynamic_eq_.SetBandAttack(i, b.attack);
+        dynamic_eq_.SetBandRelease(i, b.release);
+        dynamic_eq_.SetBandFilterType(i, b.filter_type);
+    }
+    last_applied_.dynamic_eq = p;
+}
+
+std::optional<uint32_t> ViPER::LoadConvolverKernel(
+    const float *samples,
+    const uint32_t frame_count,
+    const uint32_t channels,
+    uint32_t kernel_id
+) {
+    if (samples == nullptr) return std::nullopt;
+    if (channels < 1 || channels > 2) return std::nullopt;
+    if (frame_count < 16) return std::nullopt;
+
+    const uint32_t total_floats = frame_count * channels;
+    if (total_floats == 0) return std::nullopt;
+
+    convolver_.PrepareKernelBuffer(total_floats, channels, false);
+
+    uint32_t written = 0;
+    while (written < total_floats) {
+        const uint32_t remaining = total_floats - written;
+        const uint32_t chunk =
+            remaining < kKernelChunkFloats ? remaining : kKernelChunkFloats;
+        convolver_.SetKernelBuffer(samples + written, chunk);
+        written += chunk;
+    }
+
+    const uint32_t crc =
+        Crc32(reinterpret_cast<const uint8_t *>(samples), total_floats * sizeof(float));
+
+    convolver_.CommitKernelBuffer(total_floats, crc, kernel_id);
+
+    if (convolver_.GetKernelID() != kernel_id) {
+        return std::nullopt;
+    }
+    return kernel_id;
+}
+
+void ViPER::UnloadConvolverKernel() {
+    convolver_.PrepareKernelBuffer(0, 0, true);
+}
+
+void ViPER::LoadDdcCoefficients(
+    const viper::BiquadSection *sections44100,
+    const viper::BiquadSection *sections48000,
+    const uint32_t section_count
+) {
+    if (section_count == 0) {
+        viper_ddc_.SetCoeffs(0, nullptr, nullptr);
+    }
+
+    static_assert(
+        sizeof(viper::BiquadSection) == 5 * sizeof(float),
+        "BiquadSection must be tightly packed for reinterpret_cast"
+    );
+    const uint32_t total_floats = section_count * 5;
+    viper_ddc_.SetCoeffs(
+        total_floats,
+        reinterpret_cast<const float *>(sections44100),
+        reinterpret_cast<const float *>(sections48000)
+    );
 }
