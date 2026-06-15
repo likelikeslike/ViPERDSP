@@ -9,15 +9,18 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
-    void SetBassGain(float gain);
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t samplingRate);
-    void SetSideGain(float gainX, float gainY);
+    void SetBassGain(float gain);
+    void SetSamplingRate(uint32_t sampling_rate);
+    void SetSideGain(float gain_x, float gain_y);
     void SetXCoeffs(uint32_t low, uint32_t high);
     void SetYCoeffs(uint32_t low, uint32_t high);
 
 private:
-    DynamicBass dynamicBass;
-    uint32_t samplingRate;
-    bool enable;
+    bool enable_;
+
+    uint32_t sampling_rate_;
+
+    DynamicBass dynamic_bass_;
 };

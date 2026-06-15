@@ -7,15 +7,15 @@ public:
     NoiseSharpening();
 
     void Process(float *buffer, uint32_t size);
-
     void Reset();
-
     void SetGain(float gain);
+    void SetSamplingRate(uint32_t sampling_rate);
 
-    void SetSamplingRate(uint32_t samplingRate);
+private:
+    uint32_t sampling_rate_;
 
-    IIR_1st filters[2];
-    float in[2];
-    uint32_t samplingRate;
-    float gain;
+    float gain_;
+    float in_[2];
+
+    IIR_1st filters_[2];
 };

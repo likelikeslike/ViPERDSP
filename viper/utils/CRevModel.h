@@ -1,6 +1,6 @@
 #pragma once
 
-#include "CAllpassFilter.h"
+#include "CAllPassFilter.h"
 #include "CCombFilter.h"
 
 class CRevModel {
@@ -8,42 +8,42 @@ public:
     CRevModel();
     ~CRevModel();
 
-    void Mute();
-    void ProcessReplace(float *bufL, float *bufR, uint32_t size);
+    void ProcessReplace(float *buf_l, float *buf_r, uint32_t size);
+    void Mute() const;
+    void Reset() const;
+
+    void SetRoomSize(float value);
+    void SetDamp(float value);
+    void SetWet(float value);
+    void SetDry(float value);
+    void SetWidth(float value);
+
+    [[nodiscard]] float GetRoomSize() const;
+    [[nodiscard]] float GetDamp() const;
+    [[nodiscard]] float GetWet() const;
+    [[nodiscard]] float GetDry() const;
+    [[nodiscard]] float GetWidth() const;
+
     void UpdateCoeffs();
-    void Reset();
-    void SetRoomSize(float roomSize);
-    void SetDamp(float damp);
-    void SetWet(float wet);
-    void SetDry(float dry);
-    void SetWidth(float width);
-    void SetMode(float mode);
-    float GetRoomSize();
-    float GetDamp();
-    float GetWet();
-    float GetDry();
-    float GetWidth();
-    float GetMode();
 
 private:
-    float gain;
-    float roomSize;
-    float internalRoomSize;
-    float damp;
-    float internalDamp;
-    float wet;
-    float wet1;
-    float wet2;
-    float dry;
-    float width;
-    float mode;
+    float gain_;
+    float room_size_;
+    float internal_room_size_;
+    float damp_;
+    float internal_damp_;
+    float wet_;
+    float wet1_;
+    float wet2_;
+    float dry_;
+    float width_;
 
-    CCombFilter combL[8];
-    CCombFilter combR[8];
+    CCombFilter comb_l_[8];
+    CCombFilter comb_r_[8];
 
-    CAllpassFilter allpassL[4];
-    CAllpassFilter allpassR[4];
+    CAllPassFilter allpass_l_[4];
+    CAllPassFilter allpass_r_[4];
 
-    float *bufferPool;
-    float *buffers[24];
+    float *buffer_pool_;
+    float *buffers_[24];
 };

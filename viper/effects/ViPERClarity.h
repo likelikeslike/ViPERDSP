@@ -3,9 +3,6 @@
 #include "../utils/HiFi.h"
 #include "../utils/HighShelf.h"
 #include "../utils/NoiseSharpening.h"
-#include <cstdint>
-
-// Iscle: Verified with the latest version at 13/12/2022
 
 class ViPERClarity {
 public:
@@ -19,18 +16,23 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
-    void SetClarity(float gainPercent);
-    void SetClarityToFilter();
+
     void SetEnable(bool enable);
-    void SetProcessMode(ClarityMode processMode);
-    void SetSamplingRate(uint32_t samplingRate);
+    void SetProcessMode(ClarityMode mode);
+    void SetClarityGain(float value);
+    void SetClarityToFilter();
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    NoiseSharpening noiseSharpening;
-    HighShelf highShelf[2];
-    HiFi hifi;
-    bool enable;
-    ClarityMode processMode;
-    uint32_t samplingRate;
-    float clarityGainPercent;
+    bool enable_;
+
+    ClarityMode process_mode_;
+
+    uint32_t sampling_rate_;
+
+    float gain_;
+
+    NoiseSharpening noise_sharpening_;
+    HighShelf high_shelf_[2];
+    HiFi hifi_;
 };

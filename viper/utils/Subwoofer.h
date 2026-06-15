@@ -8,10 +8,16 @@ public:
     Subwoofer();
 
     void Process(float *samples, uint32_t size);
-    void SetBassGain(uint32_t samplingRate, float gainDb);
+
+    void SetBassGain(uint32_t sampling_rate, float gain_db);
 
 private:
-    MultiBiquad peak[2];
-    MultiBiquad peakLow[2];
-    MultiBiquad lowpass[2];
+    uint32_t sampling_rate_;
+
+    float gain_;
+    float gain_lower_;
+
+    MultiBiquad peak_[2];
+    MultiBiquad peak_low_[2];
+    MultiBiquad lowpass_[2];
 };

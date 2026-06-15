@@ -1,155 +1,152 @@
 #include "ViPERDDC.h"
 #include "../../include/log.h"
 #include "../constants.h"
-#include <cstring>
 
 ViPERDDC::ViPERDDC() :
-    enable(false),
-    setCoeffsOk(false),
-    samplingRate(VIPER_DEFAULT_SAMPLING_RATE),
-    arrSize(0) {}
+    enable_(false),
+    set_coeffs_ok_(false),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    arr_size_(0) {}
 
-void ViPERDDC::Process(float *samples, uint32_t size) {
-    if (!this->setCoeffsOk || this->arrSize == 0) return;
-    if (!this->enable) return;
+void ViPERDDC::Process(float *samples, const uint32_t size) {
+    if (!set_coeffs_ok_ || arr_size_ == 0) return;
+    if (!enable_) return;
 
-    std::vector<std::array<float, 5>> *coeffsArr;
+    std::vector<std::array<float, 5>> *coeffs_arr;
 
-    switch (this->samplingRate) {
+    switch (sampling_rate_) {
         case 44100: {
-            coeffsArr = &this->coeffsArr44100;
+            coeffs_arr = &coeffs_arr44100_;
             break;
         }
         case 48000: {
-            coeffsArr = &this->coeffsArr48000;
+            coeffs_arr = &coeffs_arr48000_;
             break;
         }
         default: {
-            VIPER_LOGD(
-                "ViPERDDC::Process() -> Invalid sampling rate: %d", this->samplingRate
-            );
+            VIPER_LOGD("ViPERDDC: Unsupported sampling rate: %d", sampling_rate_);
             return;
         }
     }
 
     for (uint32_t i = 0; i < size * 2; i += 2) {
-        float sampleL = samples[i];
-        float sampleR = samples[i + 1];
+        float sample_l = samples[i];
+        float sample_r = samples[i + 1];
 
-        for (uint32_t j = 0; j < this->arrSize; j++) {
-            std::array<float, 5> *coeffs = &(*coeffsArr)[j];
+        for (uint32_t j = 0; j < arr_size_; j++) {
+            const std::array<float, 5> *coeffs = &(*coeffs_arr)[j];
 
-            float b0 = (*coeffs)[0];
-            float b1 = (*coeffs)[1];
-            float b2 = (*coeffs)[2];
-            float a1 = (*coeffs)[3];
-            float a2 = (*coeffs)[4];
+            const float b0 = (*coeffs)[0];
+            const float b1 = (*coeffs)[1];
+            const float b2 = (*coeffs)[2];
+            const float a1 = (*coeffs)[3];
+            const float a2 = (*coeffs)[4];
 
-            float outL =
-                sampleL * b0 + x1L[j] * b1 + x2L[j] * b2 + y1L[j] * a1 + y2L[j] * a2;
+            const float out_l = sample_l * b0 + x1_l_[j] * b1 + x2_l_[j] * b2
+                                + y1_l_[j] * a1 + y2_l_[j] * a2;
 
-            x2L[j] = x1L[j];
-            x1L[j] = sampleL;
-            y2L[j] = y1L[j];
-            y1L[j] = outL;
+            x2_l_[j] = x1_l_[j];
+            x1_l_[j] = sample_l;
+            y2_l_[j] = y1_l_[j];
+            y1_l_[j] = out_l;
 
-            sampleL = outL;
+            sample_l = out_l;
 
-            float outR =
-                sampleR * b0 + x1R[j] * b1 + x2R[j] * b2 + y1R[j] * a1 + y2R[j] * a2;
+            const float out_r = sample_r * b0 + x1_r_[j] * b1 + x2_r_[j] * b2
+                                + y1_r_[j] * a1 + y2_r_[j] * a2;
 
-            x2R[j] = x1R[j];
-            x1R[j] = sampleR;
-            y2R[j] = y1R[j];
-            y1R[j] = outR;
+            x2_r_[j] = x1_r_[j];
+            x1_r_[j] = sample_r;
+            y2_r_[j] = y1_r_[j];
+            y1_r_[j] = out_r;
 
-            sampleR = outR;
+            sample_r = out_r;
         }
 
-        samples[i] = sampleL;
-        samples[i + 1] = sampleR;
+        samples[i] = sample_l;
+        samples[i + 1] = sample_r;
     }
-}
-
-void ViPERDDC::ReleaseResources() {
-    this->setCoeffsOk = false;
-
-    this->coeffsArr44100.resize(0);
-    this->coeffsArr48000.resize(0);
-
-    this->x1L.resize(0);
-    this->x1R.resize(0);
-    this->x2L.resize(0);
-    this->x2R.resize(0);
-    this->y1L.resize(0);
-    this->y1R.resize(0);
-    this->y2L.resize(0);
-    this->y2R.resize(0);
 }
 
 void ViPERDDC::Reset() {
-    if (!this->setCoeffsOk) return;
-    if (this->arrSize == 0) return;
+    if (!set_coeffs_ok_) return;
+    if (arr_size_ == 0) return;
 
-    memset(this->x1L.data(), 0, this->arrSize * sizeof(float));
-    memset(this->x1R.data(), 0, this->arrSize * sizeof(float));
-    memset(this->x2L.data(), 0, this->arrSize * sizeof(float));
-    memset(this->x2R.data(), 0, this->arrSize * sizeof(float));
-    memset(this->y1L.data(), 0, this->arrSize * sizeof(float));
-    memset(this->y1R.data(), 0, this->arrSize * sizeof(float));
-    memset(this->y2L.data(), 0, this->arrSize * sizeof(float));
-    memset(this->y2R.data(), 0, this->arrSize * sizeof(float));
+    memset(x1_l_.data(), 0, arr_size_ * sizeof(float));
+    memset(x1_r_.data(), 0, arr_size_ * sizeof(float));
+    memset(x2_l_.data(), 0, arr_size_ * sizeof(float));
+    memset(x2_r_.data(), 0, arr_size_ * sizeof(float));
+    memset(y1_l_.data(), 0, arr_size_ * sizeof(float));
+    memset(y1_r_.data(), 0, arr_size_ * sizeof(float));
+    memset(y2_l_.data(), 0, arr_size_ * sizeof(float));
+    memset(y2_r_.data(), 0, arr_size_ * sizeof(float));
 }
 
-void ViPERDDC::SetCoeffs(
-    uint32_t newCoeffsSize, float *newCoeffs44100, float *newCoeffs48000
-) {
-    ReleaseResources();
-
-    if (newCoeffsSize == 0) return;
-
-    this->arrSize = newCoeffsSize / 5;
-    this->coeffsArr44100.resize(this->arrSize);
-    this->coeffsArr48000.resize(this->arrSize);
-
-    for (uint32_t i = 0; i < this->arrSize; i++) {
-        this->coeffsArr44100[i][0] = newCoeffs44100[i * 5];
-        this->coeffsArr44100[i][1] = newCoeffs44100[i * 5 + 1];
-        this->coeffsArr44100[i][2] = newCoeffs44100[i * 5 + 2];
-        this->coeffsArr44100[i][3] = newCoeffs44100[i * 5 + 3];
-        this->coeffsArr44100[i][4] = newCoeffs44100[i * 5 + 4];
-
-        this->coeffsArr48000[i][0] = newCoeffs48000[i * 5];
-        this->coeffsArr48000[i][1] = newCoeffs48000[i * 5 + 1];
-        this->coeffsArr48000[i][2] = newCoeffs48000[i * 5 + 2];
-        this->coeffsArr48000[i][3] = newCoeffs48000[i * 5 + 3];
-        this->coeffsArr48000[i][4] = newCoeffs48000[i * 5 + 4];
-    }
-
-    this->x1L.resize(this->arrSize);
-    this->x1R.resize(this->arrSize);
-    this->x2L.resize(this->arrSize);
-    this->x2R.resize(this->arrSize);
-    this->y1L.resize(this->arrSize);
-    this->y1R.resize(this->arrSize);
-    this->y2L.resize(this->arrSize);
-    this->y2R.resize(this->arrSize);
-
-    this->setCoeffsOk = true;
-}
-
-void ViPERDDC::SetEnable(bool enable) {
-    if (this->enable != enable) {
-        this->enable = enable;
+void ViPERDDC::SetEnable(const bool enable) {
+    if (enable_ != enable) {
+        enable_ = enable;
         if (enable) {
             Reset();
         }
     }
 }
 
-void ViPERDDC::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
+void ViPERDDC::SetCoeffs(
+    const uint32_t coeffs_size, const float *coeffs_44100, const float *coeffs_48000
+) {
+    ReleaseResources();
+
+    if (coeffs_size == 0) return;
+
+    arr_size_ = coeffs_size / 5;
+    coeffs_arr44100_.resize(arr_size_);
+    coeffs_arr48000_.resize(arr_size_);
+
+    for (uint32_t i = 0; i < arr_size_; i++) {
+        coeffs_arr44100_[i][0] = coeffs_44100[i * 5];
+        coeffs_arr44100_[i][1] = coeffs_44100[i * 5 + 1];
+        coeffs_arr44100_[i][2] = coeffs_44100[i * 5 + 2];
+        coeffs_arr44100_[i][3] = coeffs_44100[i * 5 + 3];
+        coeffs_arr44100_[i][4] = coeffs_44100[i * 5 + 4];
+
+        coeffs_arr48000_[i][0] = coeffs_48000[i * 5];
+        coeffs_arr48000_[i][1] = coeffs_48000[i * 5 + 1];
+        coeffs_arr48000_[i][2] = coeffs_48000[i * 5 + 2];
+        coeffs_arr48000_[i][3] = coeffs_48000[i * 5 + 3];
+        coeffs_arr48000_[i][4] = coeffs_48000[i * 5 + 4];
+    }
+
+    x1_l_.resize(arr_size_);
+    x1_r_.resize(arr_size_);
+    x2_l_.resize(arr_size_);
+    x2_r_.resize(arr_size_);
+    y1_l_.resize(arr_size_);
+    y1_r_.resize(arr_size_);
+    y2_l_.resize(arr_size_);
+    y2_r_.resize(arr_size_);
+
+    set_coeffs_ok_ = true;
+}
+
+void ViPERDDC::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
         Reset();
     }
+}
+
+void ViPERDDC::ReleaseResources() {
+    set_coeffs_ok_ = false;
+
+    coeffs_arr44100_.resize(0);
+    coeffs_arr48000_.resize(0);
+
+    x1_l_.resize(0);
+    x1_r_.resize(0);
+    x2_l_.resize(0);
+    x2_r_.resize(0);
+    y1_l_.resize(0);
+    y1_r_.resize(0);
+    y2_l_.resize(0);
+    y2_r_.resize(0);
 }

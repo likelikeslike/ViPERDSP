@@ -2,21 +2,26 @@
 
 #include <cstdint>
 
-// Iscle: Verified with the latest version at 13/12/2022
-
 class MinPhaseIIRCoeffs {
 public:
     MinPhaseIIRCoeffs();
     ~MinPhaseIIRCoeffs();
 
-    double *GetCoefficients();
-    float GetIndexFrequency(uint32_t param_1);
-    int UpdateCoeffs(uint32_t bands, uint32_t samplingRate);
+    [[nodiscard]] double *GetCoefficients() const;
+    [[nodiscard]] float GetIndexFrequency(uint32_t index) const;
+
+    int UpdateCoeffs(uint32_t bands, uint32_t sampling_rate);
 
 private:
-    void Find_F1_F2(double param_2, double param_3, double *param_4, double *param_5);
-    int SolveRoot(double param_2, double param_3, double param_4, double *param_5);
+    uint32_t bands_;
 
-    double *coeffs;
-    uint32_t bands;
+    double *coeffs_;
+
+    static void Find_F1_F2(
+        double center_freq,
+        double bandwidth_octaves,
+        double *lower_freq,
+        double *upper_freq
+    );
+    static int SolveRoot(double coeff_a, double coeff_b, double coeff_c, double *root);
 };

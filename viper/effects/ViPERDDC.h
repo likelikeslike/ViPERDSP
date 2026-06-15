@@ -1,7 +1,6 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
 #include <vector>
 
 class ViPERDDC {
@@ -10,25 +9,30 @@ public:
 
     void Process(float *samples, uint32_t size);
     void Reset();
-    void SetCoeffs(uint32_t newCoeffsSize, float *newCoeffs44100, float *newCoeffs48000);
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t samplingRate);
+    void SetCoeffs(
+        uint32_t coeffs_size, const float *coeffs_44100, const float *coeffs_48000
+    );
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    bool enable;
-    bool setCoeffsOk;
-    uint32_t samplingRate;
-    uint32_t arrSize;
-    std::vector<std::array<float, 5>> coeffsArr44100;
-    std::vector<std::array<float, 5>> coeffsArr48000;
-    std::vector<float> x1L;
-    std::vector<float> x1R;
-    std::vector<float> x2L;
-    std::vector<float> x2R;
-    std::vector<float> y1L;
-    std::vector<float> y1R;
-    std::vector<float> y2L;
-    std::vector<float> y2R;
+    bool enable_;
+    bool set_coeffs_ok_;
+
+    uint32_t sampling_rate_;
+    uint32_t arr_size_;
+
+    std::vector<std::array<float, 5>> coeffs_arr44100_;
+    std::vector<std::array<float, 5>> coeffs_arr48000_;
+    std::vector<float> x1_l_;
+    std::vector<float> x1_r_;
+    std::vector<float> x2_l_;
+    std::vector<float> x2_r_;
+    std::vector<float> y1_l_;
+    std::vector<float> y1_r_;
+    std::vector<float> y2_l_;
+    std::vector<float> y2_r_;
 
     void ReleaseResources();
 };

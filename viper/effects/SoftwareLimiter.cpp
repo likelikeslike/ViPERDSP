@@ -1,83 +1,70 @@
 #include "SoftwareLimiter.h"
-#include <algorithm>
+#include "../constants.h"
 #include <cmath>
 #include <cstring>
 
-SoftwareLimiter::SoftwareLimiter() {
-    this->ready = false;
-    this->writeIndex = 0;
-    this->gainEnvelope = 1.0;
-    this->gate = 0.999999;
-    this->smoothedGain = 1.0;
-    this->targetGain = 1.0;
+constexpr uint32_t kLookahead = 256;
+constexpr float kReleaseTauSec = 0.080f;
+constexpr float kDenormFix = 1e-25f;
+const float kReleaseCoeff =
+    1.0f
+    - std::exp(
+        -1.0f / (kReleaseTauSec * static_cast<float>(VIPER_DEFAULT_SAMPLING_RATE))
+    );
 
+SoftwareLimiter::SoftwareLimiter() :
+    ready_(false),
+    write_index_(0),
+    gate_(0.999999f),
+    target_gain_(1.0f),
+    gain_envelope_(1.0f),
+    smoothed_gain_(1.0f),
+    arr256_{},
+    arr512_{} {
     Reset();
 }
 
 float SoftwareLimiter::Process(float sample) {
     if (!std::isfinite(sample)) sample = 0.0f;
 
-    float peakVal = std::abs(sample);
-    bool aboveGate = peakVal >= this->gate;
+    const uint32_t wi = write_index_;
 
-    if (aboveGate && !this->ready) {
-        memset(this->arr512, 0, sizeof(this->arr512));
-        this->ready = true;
+    const float delayed = arr256_[wi];
+    const float window_peak = arr512_[1];
+
+    const float target_gain = window_peak > gate_ ? gate_ / window_peak : 1.0f;
+    const float released =
+        gain_envelope_ + kReleaseCoeff * (1.0f - gain_envelope_) + kDenormFix;
+    float gain = target_gain < released ? target_gain : released;
+    if (gain > 1.0f) gain = 1.0f;
+    gain_envelope_ = gain;
+
+    uint32_t node = kLookahead + wi;
+    arr512_[node] = std::fabs(sample);
+    while (node > 1) {
+        const uint32_t parent = node >> 1;
+        const uint32_t sibling = node ^ 1;
+        float a = arr512_[node];
+        float b = arr512_[sibling];
+        arr512_[parent] = a > b ? a : b;
+        node = parent;
     }
+    arr256_[wi] = sample;
+    write_index_ = wi + 1 & kLookahead - 1;
 
-    if (this->ready) {
-        uint32_t idx = this->writeIndex;
-        for (uint32_t level = 8; level > 0; --level) {
-            int offset = 2 << (level & 0xff);
-            uint32_t sibling = idx ^ 1;
-            this->arr512[512 + idx - offset] = peakVal;
-            if (peakVal < this->arr512[512 + sibling - offset]) {
-                peakVal = this->arr512[512 + sibling - offset];
-            }
-            idx /= 2;
-        }
-    }
-
-    float newTargetGain = this->targetGain;
-    if (this->ready && peakVal > this->gate) {
-        newTargetGain = this->gate / peakVal;
-    } else if (this->ready && peakVal <= this->gate) {
-        this->ready = false;
-    }
-
-    uint32_t wi = this->writeIndex;
-    this->arr256[wi] = sample;
-    wi = (wi + 1) % 256;
-    this->writeIndex = wi;
-    float delayed = this->arr256[wi];
-
-    float releaseCoeff = (this->gainEnvelope < this->smoothedGain) ? 0.999f : 0.9997f;
-    float envelope = this->gainEnvelope * releaseCoeff + (1.0f - releaseCoeff);
-    float smoothed = newTargetGain * 0.0999 + this->smoothedGain * 0.8999;
-    this->smoothedGain = smoothed;
-    float gain = std::min(envelope, smoothed);
-    this->gainEnvelope = gain;
-
-    float out = delayed * gain;
-    if (std::abs(out) >= this->gate) {
-        gain = this->gate / std::abs(delayed);
-        this->gainEnvelope = gain;
-        out = delayed * gain;
-    }
-
-    return out;
+    return delayed * gain;
 }
 
 void SoftwareLimiter::Reset() {
-    memset(this->arr256, 0, sizeof(this->arr256));
-    memset(this->arr512, 0, sizeof(this->arr512));
-    this->ready = false;
-    this->writeIndex = 0;
-    this->gainEnvelope = 1.0;
-    this->smoothedGain = 1.0;
-    this->targetGain = 1.0;
+    memset(arr256_, 0, sizeof(arr256_));
+    memset(arr512_, 0, sizeof(arr512_));
+    ready_ = false;
+    write_index_ = 0;
+    gain_envelope_ = 1.0f;
+    smoothed_gain_ = 1.0f;
+    target_gain_ = 1.0f;
 }
 
-void SoftwareLimiter::SetGate(float gate) {
-    this->gate = gate;
+void SoftwareLimiter::SetGate(const float gate) {
+    gate_ = gate;
 }

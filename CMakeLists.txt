@@ -40,7 +40,7 @@ set(VIPERDSP_SOURCES
     # Utils
     viper/utils/AdaptiveBuffer.cpp
     viper/utils/Biquad.cpp
-    viper/utils/CAllpassFilter.cpp
+    viper/utils/CAllPassFilter.cpp
     viper/utils/CCombFilter.cpp
     viper/utils/CRevModel.cpp
     viper/utils/Crossfeed.cpp
@@ -75,6 +75,6 @@ target_include_directories(ViPERDSP PUBLIC
 
 target_compile_options(ViPERDSP PRIVATE -O3 -flto)
 
-if(ANDROID)
+if (ANDROID)
     target_link_libraries(ViPERDSP log)
-endif()
+endif ()

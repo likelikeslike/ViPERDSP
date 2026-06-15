@@ -1,59 +1,73 @@
 #include "ViPERClarity.h"
 #include "../constants.h"
 
-// Iscle: Verified with the latest version at 13/12/2022
-
-ViPERClarity::ViPERClarity() {
-    for (auto &highShelf : this->highShelf) {
-        highShelf.SetFrequency(12000.0);
-        highShelf.SetGain(1.0);
-        highShelf.SetSamplingRate(VIPER_DEFAULT_SAMPLING_RATE);
+ViPERClarity::ViPERClarity() :
+    enable_(false),
+    process_mode_(NATURAL),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    gain_(0.0f) {
+    for (auto &high_shelf : high_shelf_) {
+        high_shelf.SetFrequency(12000.0f);
+        high_shelf.SetGain(1.0f);
+        high_shelf.SetSamplingRate(VIPER_DEFAULT_SAMPLING_RATE);
     }
-
-    this->enable = false;
-    this->processMode = ClarityMode::NATURAL;
-    this->clarityGainPercent = 0.0;
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
     Reset();
 }
 
-void ViPERClarity::Process(float *samples, uint32_t size) {
-    if (!this->enable) return;
+void ViPERClarity::Process(float *samples, const uint32_t size) {
+    if (!enable_) return;
 
-    switch (this->processMode) {
-        case ClarityMode::NATURAL: {
-            this->noiseSharpening.Process(samples, size);
+    switch (process_mode_) {
+        case NATURAL: {
+            noise_sharpening_.Process(samples, size);
             break;
         }
-        case ClarityMode::OZONE: {
+        case OZONE: {
             for (uint32_t i = 0; i < size * 2; i += 2) {
-                samples[i] = (float) this->highShelf[0].Process(samples[i]);
-                samples[i + 1] = (float) this->highShelf[1].Process(samples[i + 1]);
+                samples[i] = static_cast<float>(high_shelf_[0].Process(samples[i]));
+                samples[i + 1] =
+                    static_cast<float>(high_shelf_[1].Process(samples[i + 1]));
             }
             break;
         }
-        case ClarityMode::XHIFI: {
-            this->hifi.Process(samples, size);
+        case XHIFI: {
+            hifi_.Process(samples, size);
             break;
         }
     }
 }
 
 void ViPERClarity::Reset() {
-    this->noiseSharpening.SetSamplingRate(this->samplingRate);
-    this->noiseSharpening.Reset();
+    noise_sharpening_.SetSamplingRate(sampling_rate_);
+    noise_sharpening_.Reset();
     SetClarityToFilter();
-    for (auto &highShelf : this->highShelf) {
-        highShelf.SetFrequency(8250.0);
-        highShelf.SetSamplingRate(this->samplingRate);
+    for (auto &high_shelf : high_shelf_) {
+        high_shelf.SetFrequency(8250.0f);
+        high_shelf.SetSamplingRate(sampling_rate_);
     }
-    this->hifi.SetSamplingRate(this->samplingRate);
-    this->hifi.Reset();
+    hifi_.SetSamplingRate(sampling_rate_);
+    hifi_.Reset();
 }
 
-void ViPERClarity::SetClarity(float gainPercent) {
-    this->clarityGainPercent = gainPercent;
-    if (this->processMode == ClarityMode::OZONE) {
+void ViPERClarity::SetEnable(const bool enable) {
+    if (enable_ != enable) {
+        if (enable) {
+            Reset();
+        }
+        enable_ = enable;
+    }
+}
+
+void ViPERClarity::SetProcessMode(const ClarityMode mode) {
+    if (process_mode_ != mode) {
+        process_mode_ = mode;
+        Reset();
+    }
+}
+
+void ViPERClarity::SetClarityGain(const float value) {
+    gain_ = value;
+    if (process_mode_ == OZONE) {
         Reset();
     } else {
         SetClarityToFilter();
@@ -61,31 +75,15 @@ void ViPERClarity::SetClarity(float gainPercent) {
 }
 
 void ViPERClarity::SetClarityToFilter() {
-    this->noiseSharpening.SetGain(this->clarityGainPercent);
-    this->highShelf[0].SetGain(this->clarityGainPercent + 1.0f);
-    this->highShelf[1].SetGain(this->clarityGainPercent + 1.0f);
-    this->hifi.SetClarity(this->clarityGainPercent + 1.0f);
+    noise_sharpening_.SetGain(gain_);
+    high_shelf_[0].SetGain(gain_ + 1.0f);
+    high_shelf_[1].SetGain(gain_ + 1.0f);
+    hifi_.SetClarity(gain_ + 1.0f);
 }
 
-void ViPERClarity::SetEnable(bool enable) {
-    if (this->enable != enable) {
-        if (enable) {
-            Reset();
-        }
-        this->enable = enable;
-    }
-}
-
-void ViPERClarity::SetProcessMode(ClarityMode processMode) {
-    if (this->processMode != processMode) {
-        this->processMode = processMode;
-        Reset();
-    }
-}
-
-void ViPERClarity::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
+void ViPERClarity::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
         Reset();
     }
 }

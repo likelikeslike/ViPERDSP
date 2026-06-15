@@ -2,17 +2,18 @@
 
 #include "IIR_NOrder_BW_LH.h"
 #include <array>
-#include <cstdint>
 
 class PassFilter {
 public:
     PassFilter();
 
-    void Reset();
     void ProcessFrames(float *buffer, uint32_t size);
-    void SetSamplingRate(uint32_t samplingRate);
+    void Reset();
+
+    void SetSamplingRate(uint32_t sampling_rate);
 
 private:
-    std::array<IIR_NOrder_BW_LH, 4> filters;
-    uint32_t samplingRate;
+    uint32_t sampling_rate_;
+
+    std::array<IIR_NOrder_BW_LH, 4> filters_;
 };

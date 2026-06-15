@@ -8,15 +8,18 @@ public:
 
     float Process(float sample);
     void Reset();
+
     void SetGate(float gate);
 
 private:
-    float gate;
-    float targetGain;
-    float gainEnvelope;
-    float smoothedGain;
-    float arr256[256];
-    float arr512[512];
-    uint32_t writeIndex;
-    bool ready;
+    bool ready_;
+
+    uint32_t write_index_;
+
+    float gate_;
+    float target_gain_;
+    float gain_envelope_;
+    float smoothed_gain_;
+    float arr256_[256];
+    float arr512_[512];
 };

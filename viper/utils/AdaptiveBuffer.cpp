@@ -1,59 +1,55 @@
 #include "AdaptiveBuffer.h"
-#include <cstring>
 
-AdaptiveBuffer::AdaptiveBuffer(uint32_t channels, uint32_t length) {
-    this->channels = channels;
-    this->length = length;
-    this->buffer = std::vector<float>(channels * length);
-    this->offset = 0;
-}
-
-void AdaptiveBuffer::FlushBuffer() {
-    this->offset = 0;
-    std::fill(this->buffer.begin(), this->buffer.end(), 0.0f);
-}
-
+AdaptiveBuffer::AdaptiveBuffer(const uint32_t channels, const uint32_t length) :
+    length_(length),
+    offset_(0),
+    channels_(channels),
+    buffer_(channels * length) {}
 uint32_t AdaptiveBuffer::GetBufferLength() const {
-    return this->length;
+    return length_;
 }
 
 uint32_t AdaptiveBuffer::GetBufferOffset() const {
-    return this->offset;
+    return offset_;
 }
 
 float *AdaptiveBuffer::GetBuffer() {
-    return this->buffer.data();
+    return buffer_.data();
 }
 
 uint32_t AdaptiveBuffer::GetChannels() const {
-    return this->channels;
+    return channels_;
 }
 
-void AdaptiveBuffer::PanFrames(float left, float right) {
-    if (this->channels == 2) {
-        for (uint32_t i = 0; i < this->offset * this->channels; i++) {
+void AdaptiveBuffer::SetBufferOffset(const uint32_t value) {
+    offset_ = value;
+}
+
+void AdaptiveBuffer::PanFrames(const float left, const float right) {
+    if (channels_ == 2) {
+        for (uint32_t i = 0; i < offset_ * channels_; i++) {
             if (i % 2 == 0) {
-                this->buffer[i] = this->buffer[i] * left;
+                buffer_[i] = buffer_[i] * left;
             } else {
-                this->buffer[i] = this->buffer[i] * right;
+                buffer_[i] = buffer_[i] * right;
             }
         }
     }
 }
 
-int AdaptiveBuffer::PopFrames(float *frames, uint32_t length) {
-    if (this->offset < length) {
+int AdaptiveBuffer::PopFrames(float *frames, const uint32_t length) {
+    if (offset_ < length) {
         return 0;
     }
 
     if (length != 0) {
-        memcpy(frames, this->buffer.data(), length * this->channels * sizeof(float));
-        this->offset = this->offset - length;
-        if (this->offset != 0) {
+        memcpy(frames, buffer_.data(), length * channels_ * sizeof(float));
+        offset_ = offset_ - length;
+        if (offset_ != 0) {
             memmove(
-                this->buffer.data(),
-                this->buffer.data() + (length * this->channels),
-                this->offset * this->channels * sizeof(float)
+                buffer_.data(),
+                buffer_.data() + length * channels_,
+                offset_ * channels_ * sizeof(float)
             );
         }
     }
@@ -61,46 +57,43 @@ int AdaptiveBuffer::PopFrames(float *frames, uint32_t length) {
     return 1;
 }
 
-int AdaptiveBuffer::PushFrames(const float *frames, uint32_t length) {
+int AdaptiveBuffer::PushFrames(const float *frames, const uint32_t length) {
     if (length != 0) {
-        if (this->offset + length > this->length) {
-            buffer.resize((this->offset + length) * this->channels);
-            this->length = this->offset + length;
+        if (offset_ + length > length_) {
+            buffer_.resize((offset_ + length) * channels_);
+            length_ = offset_ + length;
         }
 
         memcpy(
-            this->buffer.data() + (this->offset * this->channels),
+            buffer_.data() + offset_ * channels_,
             frames,
-            length * this->channels * sizeof(float)
+            length * channels_ * sizeof(float)
         );
-        this->offset = this->offset + length;
+        offset_ = offset_ + length;
     }
 
     return 1;
 }
 
-int AdaptiveBuffer::PushZero(uint32_t length) {
-    if (this->offset + length > this->length) {
-        buffer.resize((this->offset + length) * this->channels);
-        this->length = this->offset + length;
+void AdaptiveBuffer::ScaleFrames(const float scale) {
+    for (uint32_t i = 0; i < offset_ * channels_; i++) {
+        buffer_[i] = buffer_[i] * scale;
+    }
+}
+
+int AdaptiveBuffer::PushZero(const uint32_t length) {
+    if (offset_ + length > length_) {
+        buffer_.resize((offset_ + length) * channels_);
+        length_ = offset_ + length;
     }
 
-    memset(
-        this->buffer.data() + (this->offset * this->channels),
-        0,
-        length * this->channels * sizeof(float)
-    );
-    this->offset = this->offset + length;
+    memset(buffer_.data() + offset_ * channels_, 0, length * channels_ * sizeof(float));
+    offset_ = offset_ + length;
 
     return 1;
 }
 
-void AdaptiveBuffer::ScaleFrames(float scale) {
-    for (uint32_t i = 0; i < this->offset * this->channels; i++) {
-        this->buffer[i] = this->buffer[i] * scale;
-    }
-}
-
-void AdaptiveBuffer::SetBufferOffset(uint32_t offset) {
-    this->offset = offset;
+void AdaptiveBuffer::FlushBuffer() {
+    offset_ = 0;
+    std::fill(buffer_.begin(), buffer_.end(), 0.0f);
 }

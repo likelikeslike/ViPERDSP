@@ -1,66 +1,65 @@
 #include "Stereo3DSurround.h"
 
-Stereo3DSurround::Stereo3DSurround() {
-    this->middleImage = 1.0;
-    this->stereoWiden = 0.0;
-    this->coeffLeft = 0.5;
-    this->coeffRight = 0.5;
-}
+Stereo3DSurround::Stereo3DSurround() :
+    stereo_widen_(0.0f),
+    middle_image_(1.0f),
+    coeff_left_(0.5f),
+    coeff_right_(0.5f) {}
 
-void Stereo3DSurround::Process(float *samples, uint32_t size) {
+void Stereo3DSurround::Process(float *sample, const uint32_t size) const {
     if (size == 0) return;
 
-    uint32_t pairs = size / 2;
-    uint32_t remainder = size % 2;
+    const uint32_t pairs = size / 2;
+    const uint32_t remainder = size % 2;
 
     if (pairs > 0) {
         for (uint32_t i = 0; i < pairs; i++) {
-            float a = this->coeffLeft * (samples[4 * i] + samples[4 * i + 1]);
-            float b = this->coeffRight * (samples[4 * i + 1] - samples[4 * i]);
-            float c = this->coeffLeft * (samples[4 * i + 2] + samples[4 * i + 3]);
-            float d = this->coeffRight * (samples[4 * i + 3] - samples[4 * i + 2]);
+            const float a = coeff_left_ * (sample[4 * i] + sample[4 * i + 1]);
+            const float b = coeff_right_ * (sample[4 * i + 1] - sample[4 * i]);
+            const float c = coeff_left_ * (sample[4 * i + 2] + sample[4 * i + 3]);
+            const float d = coeff_right_ * (sample[4 * i + 3] - sample[4 * i + 2]);
 
-            samples[4 * i] = a - b;
-            samples[4 * i + 1] = a + b;
-            samples[4 * i + 2] = c - d;
-            samples[4 * i + 3] = c + d;
+            sample[4 * i] = a - b;
+            sample[4 * i + 1] = a + b;
+            sample[4 * i + 2] = c - d;
+            sample[4 * i + 3] = c + d;
         }
     }
 
     if (remainder > 0) {
         for (uint32_t i = 4 * pairs; i < 2 * size; i += 2) {
-            float a = samples[i];
-            float b = samples[i + 1];
-            float c = this->coeffLeft * (a + b);
-            float d = this->coeffRight * (b - a);
+            const float a = sample[i];
+            const float b = sample[i + 1];
+            const float c = coeff_left_ * (a + b);
+            const float d = coeff_right_ * (b - a);
 
-            samples[i] = c - d;
-            samples[i + 1] = c + d;
+            sample[i] = c - d;
+            sample[i + 1] = c + d;
         }
     }
 }
 
-inline void Stereo3DSurround::ConfigureVariables() {
-    float tmp = this->stereoWiden + 1.0f;
+void Stereo3DSurround::SetMiddleImage(const float value) {
+    middle_image_ = value;
+    ConfigureVariables();
+}
 
-    float x = tmp + 1.0f;
+void Stereo3DSurround::SetStereoWiden(const float value) {
+    stereo_widen_ = value;
+    ConfigureVariables();
+}
+
+void Stereo3DSurround::ConfigureVariables() {
+    const float tmp = stereo_widen_ + 1.0f;
+
+    const float x = tmp + 1.0f;
     float y;
-    if (x < 2.0) {
-        y = 0.5;
+    if (x < 2.0f) {
+        y = 0.5f;
     } else {
         y = 1.0f / x;
     }
 
-    this->coeffLeft = this->middleImage * y;
-    this->coeffRight = tmp * y;
-}
-
-void Stereo3DSurround::SetMiddleImage(float middleImage) {
-    this->middleImage = middleImage;
-    this->ConfigureVariables();
-}
-
-void Stereo3DSurround::SetStereoWiden(float stereoWiden) {
-    this->stereoWiden = stereoWiden;
-    this->ConfigureVariables();
+    coeff_left_ = middle_image_ * y;
+    coeff_right_ = tmp * y;
 }

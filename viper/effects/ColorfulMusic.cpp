@@ -1,49 +1,49 @@
 #include "ColorfulMusic.h"
 #include "../constants.h"
 
-ColorfulMusic::ColorfulMusic() {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->enabled = false;
-    this->stereo3dSurround.SetStereoWiden(0.0);
-    this->depthSurround.SetSamplingRate(this->samplingRate);
-    this->depthSurround.SetStrength(0);
+ColorfulMusic::ColorfulMusic() :
+    enabled_(false),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE) {
+    stereo_3d_surround_.SetStereoWiden(0.0f);
+    depth_surround_.SetSamplingRate(sampling_rate_);
+    depth_surround_.SetStrength(0);
 }
 
-void ColorfulMusic::Process(float *samples, uint32_t size) {
-    if (!this->enabled) return;
+void ColorfulMusic::Process(float *samples, const uint32_t size) {
+    if (!enabled_) return;
 
-    this->depthSurround.Process(samples, size);
-    this->stereo3dSurround.Process(samples, size);
+    depth_surround_.Process(samples, size);
+    stereo_3d_surround_.Process(samples, size);
 }
 
 void ColorfulMusic::Reset() {
-    this->depthSurround.SetSamplingRate(this->samplingRate);
+    depth_surround_.SetSamplingRate(sampling_rate_);
 }
 
-void ColorfulMusic::SetDepthValue(short depthValue) {
-    this->depthSurround.SetStrength(depthValue);
-}
-
-void ColorfulMusic::SetEnable(bool enable) {
-    if (this->enabled != enable) {
-        if (!this->enabled) {
+void ColorfulMusic::SetEnable(const bool enable) {
+    if (enabled_ != enable) {
+        if (!enabled_) {
             Reset();
         }
-        this->enabled = enable;
+        enabled_ = enable;
     }
 }
 
-void ColorfulMusic::SetMidImageValue(float midImageValue) {
-    this->stereo3dSurround.SetMiddleImage(midImageValue);
+void ColorfulMusic::SetDepthValue(const uint32_t value) {
+    depth_surround_.SetStrength(value);
 }
 
-void ColorfulMusic::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
-        this->depthSurround.SetSamplingRate(this->samplingRate);
+void ColorfulMusic::SetMidImageValue(const float value) {
+    stereo_3d_surround_.SetMiddleImage(value);
+}
+
+void ColorfulMusic::SetWidenValue(const float value) {
+    stereo_3d_surround_.SetStereoWiden(value);
+}
+
+void ColorfulMusic::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
+        depth_surround_.SetSamplingRate(sampling_rate_);
     }
-}
-
-void ColorfulMusic::SetWidenValue(float widenValue) {
-    this->stereo3dSurround.SetStereoWiden(widenValue);
 }

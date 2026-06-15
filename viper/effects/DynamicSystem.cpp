@@ -1,52 +1,52 @@
 #include "DynamicSystem.h"
 #include "../constants.h"
 
-DynamicSystem::DynamicSystem() {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->enable = false;
-    this->dynamicBass.SetSamplingRate(this->samplingRate);
-    this->dynamicBass.Reset();
+DynamicSystem::DynamicSystem() :
+    enable_(false),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE) {
+    dynamic_bass_.SetSamplingRate(sampling_rate_);
+    dynamic_bass_.Reset();
 }
 
-void DynamicSystem::Process(float *samples, uint32_t size) {
-    if (!this->enable) return;
+void DynamicSystem::Process(float *samples, const uint32_t size) {
+    if (!enable_) return;
 
-    this->dynamicBass.FilterSamples(samples, size);
+    dynamic_bass_.FilterSamples(samples, size);
 }
 
 void DynamicSystem::Reset() {
-    this->dynamicBass.SetSamplingRate(this->samplingRate);
-    this->dynamicBass.Reset();
+    dynamic_bass_.SetSamplingRate(sampling_rate_);
+    dynamic_bass_.Reset();
 }
 
-void DynamicSystem::SetBassGain(float gain) {
-    this->dynamicBass.SetBassGain(gain);
-}
-
-void DynamicSystem::SetEnable(bool enable) {
-    if (this->enable != enable) {
+void DynamicSystem::SetEnable(const bool enable) {
+    if (enable_ != enable) {
         if (enable) {
             Reset();
         }
-        this->enable = enable;
+        enable_ = enable;
     }
 }
 
-void DynamicSystem::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
-        this->dynamicBass.SetSamplingRate(samplingRate);
+void DynamicSystem::SetBassGain(const float gain) {
+    dynamic_bass_.SetBassGain(gain);
+}
+
+void DynamicSystem::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
+        dynamic_bass_.SetSamplingRate(sampling_rate);
     }
 }
 
-void DynamicSystem::SetSideGain(float gainX, float gainY) {
-    this->dynamicBass.SetSideGain(gainX, gainY);
+void DynamicSystem::SetSideGain(const float gain_x, const float gain_y) {
+    dynamic_bass_.SetSideGain(gain_x, gain_y);
 }
 
-void DynamicSystem::SetXCoeffs(uint32_t low, uint32_t high) {
-    this->dynamicBass.SetFilterXPassFrequency(low, high);
+void DynamicSystem::SetXCoeffs(const uint32_t low, const uint32_t high) {
+    dynamic_bass_.SetFilterXPassFrequency(low, high);
 }
 
-void DynamicSystem::SetYCoeffs(uint32_t low, uint32_t high) {
-    this->dynamicBass.SetFilterYPassFrequency(low, high);
+void DynamicSystem::SetYCoeffs(const uint32_t low, const uint32_t high) {
+    dynamic_bass_.SetFilterYPassFrequency(low, high);
 }

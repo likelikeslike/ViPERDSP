@@ -1,1321 +1,946 @@
 #include "ViPER.h"
+#include "../include/ViPERParams.h"
 #include "../include/log.h"
 #include "constants.h"
-#include <cstring>
+#include "utils/Crc32.h"
+
+using namespace viper::params;
+
+template <typename T>
+bool BitEqual(const T &a, const T &b) {
+    static_assert(
+        std::is_trivially_copyable_v<T>,
+        "ViPERParams sub-structs must be trivially copyable"
+    );
+    return std::memcmp(&a, &b, sizeof(T)) == 0;
+}
+
+constexpr uint32_t kKernelChunkFloats = 2046;
 
 ViPER::ViPER() :
-    processFrameCount(0),
-    samplingRate(VIPER_DEFAULT_SAMPLING_RATE),
-    adaptiveBuffer(AdaptiveBuffer(2, 4096)),
-    waveBuffer(WaveBuffer(2, 4096)),
-    iirFilter(IIRFilter(10)) {
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    process_frame_count_(0),
+    frame_scale_(1.0f),
+    left_pan_(1.0f),
+    right_pan_(1.0f),
+    adaptive_buffer_(AdaptiveBuffer(2, 4096)),
+    wave_buffer_(WaveBuffer(2, 4096)),
+    iir_filter_(IIRFilter(10)) {
     VIPER_LOGI("Welcome to ViPER FX");
     VIPER_LOGI("Current version is %s (%d)", VERSION_NAME, VERSION_CODE);
 
-    this->convolver.SetEnable(false);
-    this->convolver.SetSamplingRate(this->samplingRate);
-    this->convolver.Reset();
+    convolver_.SetEnable(false);
+    convolver_.SetSamplingRate(sampling_rate_);
+    convolver_.Reset();
 
-    this->vhe.SetEnable(false);
-    this->vhe.SetSamplingRate(this->samplingRate);
-    this->vhe.Reset();
+    vhe_.SetEnable(false);
+    vhe_.SetSamplingRate(sampling_rate_);
+    vhe_.Reset();
 
-    this->viperDdc.SetEnable(false);
-    this->viperDdc.SetSamplingRate(this->samplingRate);
-    this->viperDdc.Reset();
+    viper_ddc_.SetEnable(false);
+    viper_ddc_.SetSamplingRate(sampling_rate_);
+    viper_ddc_.Reset();
 
-    this->spectrumExtend.SetEnable(false);
-    this->spectrumExtend.SetSamplingRate(this->samplingRate);
-    this->spectrumExtend.SetReferenceFrequency(7600);
-    this->spectrumExtend.SetExciter(0);
-    this->spectrumExtend.Reset();
+    spectrum_extend_.SetEnable(false);
+    spectrum_extend_.SetSamplingRate(sampling_rate_);
+    spectrum_extend_.SetReferenceFrequency(7600);
+    spectrum_extend_.SetExciter(0);
+    spectrum_extend_.Reset();
 
-    this->iirFilter.SetEnable(false);
-    this->iirFilter.SetSamplingRate(this->samplingRate);
-    this->iirFilter.Reset();
+    iir_filter_.SetEnable(false);
+    iir_filter_.SetSamplingRate(sampling_rate_);
+    iir_filter_.Reset();
 
-    this->dynamicEQ.SetEnable(false);
-    this->dynamicEQ.SetSamplingRate(this->samplingRate);
-    this->dynamicEQ.Reset();
+    dynamic_eq_.SetEnable(false);
+    dynamic_eq_.SetSamplingRate(sampling_rate_);
+    dynamic_eq_.Reset();
 
-    this->colorfulMusic.SetEnable(false);
-    this->colorfulMusic.SetSamplingRate(this->samplingRate);
-    this->colorfulMusic.Reset();
+    colorful_music_.SetEnable(false);
+    colorful_music_.SetSamplingRate(sampling_rate_);
+    colorful_music_.Reset();
 
-    this->stereoImager.SetEnable(false);
-    this->stereoImager.SetSamplingRate(this->samplingRate);
-    this->stereoImager.Reset();
+    stereo_imager_.SetEnable(false);
+    stereo_imager_.SetSamplingRate(sampling_rate_);
+    stereo_imager_.Reset();
 
-    this->reverberation.SetEnable(false);
-    this->reverberation.Reset();
+    reverberation_.SetEnable(false);
+    reverberation_.Reset();
 
-    this->playbackGain.SetEnable(false);
-    this->playbackGain.SetSamplingRate(this->samplingRate);
-    this->playbackGain.Reset();
+    playback_gain_.SetEnable(false);
+    playback_gain_.SetSamplingRate(sampling_rate_);
+    playback_gain_.Reset();
 
-    this->lufsTargeting.SetEnable(false);
-    this->lufsTargeting.SetSamplingRate(this->samplingRate);
-    this->lufsTargeting.Reset();
+    lufs_targeting_.SetEnable(false);
+    lufs_targeting_.SetSamplingRate(sampling_rate_);
+    lufs_targeting_.Reset();
 
-    this->fetCompressor.SetParameter(FETCompressor::ENABLE, 0.0);
-    this->fetCompressor.SetSamplingRate(this->samplingRate);
-    this->fetCompressor.Reset();
+    fet_compressor_.SetEnable(false);
+    fet_compressor_.SetSamplingRate(sampling_rate_);
+    fet_compressor_.Reset();
 
-    this->multibandCompressor.SetEnable(false);
-    this->multibandCompressor.SetSamplingRate(this->samplingRate);
-    this->multibandCompressor.Reset();
+    multiband_compressor_.SetEnable(false);
+    multiband_compressor_.SetSamplingRate(sampling_rate_);
+    multiband_compressor_.Reset();
 
-    this->dynamicSystem.SetEnable(false);
-    this->dynamicSystem.SetSamplingRate(this->samplingRate);
-    this->dynamicSystem.Reset();
+    dynamic_system_.SetEnable(false);
+    dynamic_system_.SetSamplingRate(sampling_rate_);
+    dynamic_system_.Reset();
 
-    this->viperBass.SetSamplingRate(this->samplingRate);
-    this->viperBass.Reset();
+    viper_bass_.SetSamplingRate(sampling_rate_);
+    viper_bass_.Reset();
 
-    this->viperBassMono.SetSamplingRate(this->samplingRate);
-    this->viperBassMono.Reset();
+    viper_bass_mono_.SetSamplingRate(sampling_rate_);
+    viper_bass_mono_.Reset();
 
-    this->psychoacousticBass.SetEnable(false);
-    this->psychoacousticBass.SetSamplingRate(this->samplingRate);
-    this->psychoacousticBass.Reset();
+    psychoacoustic_bass_.SetEnable(false);
+    psychoacoustic_bass_.SetSamplingRate(sampling_rate_);
+    psychoacoustic_bass_.Reset();
 
-    this->viperClarity.SetSamplingRate(this->samplingRate);
-    this->viperClarity.Reset();
+    viper_clarity_.SetSamplingRate(sampling_rate_);
+    viper_clarity_.Reset();
 
-    this->diffSurround.SetEnable(false);
-    this->diffSurround.SetSamplingRate(this->samplingRate);
-    this->diffSurround.Reset();
+    diff_surround_.SetEnable(false);
+    diff_surround_.SetSamplingRate(sampling_rate_);
+    diff_surround_.Reset();
 
-    this->cure.SetEnable(false);
-    this->cure.SetSamplingRate(this->samplingRate);
-    this->cure.Reset();
+    cure_.SetEnable(false);
+    cure_.SetSamplingRate(sampling_rate_);
+    cure_.Reset();
 
-    this->tubeSimulator.SetEnable(false);
-    this->tubeSimulator.Reset();
+    tube_simulator_.SetEnable(false);
+    tube_simulator_.Reset();
 
-    this->analogX.SetEnable(false);
-    this->analogX.SetSamplingRate(this->samplingRate);
-    this->analogX.SetProcessingModel(0);
-    this->analogX.Reset();
+    analog_x_.SetEnable(false);
+    analog_x_.SetSamplingRate(sampling_rate_);
+    analog_x_.SetProcessingModel(0);
+    analog_x_.Reset();
 
-    this->speakerCorrection.SetEnable(false);
-    this->speakerCorrection.SetSamplingRate(this->samplingRate);
-    this->speakerCorrection.Reset();
+    speaker_correction_.SetEnable(false);
+    speaker_correction_.SetSamplingRate(sampling_rate_);
+    speaker_correction_.Reset();
 
-    for (auto &softwareLimiter : this->softwareLimiters) {
-        softwareLimiter.Reset();
+    for (auto &software_limiter : software_limiters_) {
+        software_limiter.Reset();
     }
-
-    this->frameScale = 1.0;
-    this->leftPan = 1.0;
-    this->rightPan = 1.0;
-    this->processFrameCount = 0;
 }
 
-void ViPER::process(std::vector<float> &buffer, uint32_t size) {
-    if (this->pendingEffectsReset.exchange(false, std::memory_order_acquire)) {
-        this->resetAllEffects();
+void ViPER::Process(std::vector<float> &buffer, const uint32_t size) {
+    if (pending_effects_reset_.exchange(false, std::memory_order_acquire)) {
+        pending_buffers_reset_.store(false, std::memory_order_relaxed);
+        ResetAllEffects();
+    } else if (pending_buffers_reset_.exchange(false, std::memory_order_acquire)) {
+        ResetBuffers();
     }
-    this->processFrameCount += size;
+    process_frame_count_ += size;
 
-    uint32_t ret;
-    float *tmpBuf;
-    uint32_t tmpBufSize;
+    float *tmp_buf;
+    uint32_t tmp_buf_size;
 
-    if (this->convolver.GetEnabled() || this->vhe.GetEnabled()) {
-        if (!this->waveBuffer.PushSamples(buffer.data(), size)) {
-            this->waveBuffer.Reset();
+    if (convolver_.GetEnable() || vhe_.GetEnable()) {
+        if (!wave_buffer_.PushSamples(buffer.data(), size)) {
+            wave_buffer_.Reset();
             memset(buffer.data(), 0, size * 2 * sizeof(float));
             return;
         }
 
-        float *ptr = this->waveBuffer.GetBuffer();
-        ret = this->convolver.Process(ptr, ptr, size);
-        ret = this->vhe.Process(ptr, ptr, ret);
-        this->waveBuffer.SetBufferOffset(ret);
+        float *ptr = wave_buffer_.GetBuffer();
+        uint32_t ret = convolver_.Process(ptr, ptr, size);
+        ret = vhe_.Process(ptr, ptr, ret);
+        wave_buffer_.SetBufferOffset(ret);
 
-        if (!this->adaptiveBuffer.PushZero(ret)) {
-            this->waveBuffer.Reset();
-            this->adaptiveBuffer.FlushBuffer();
+        if (!adaptive_buffer_.PushZero(ret)) {
+            wave_buffer_.Reset();
+            adaptive_buffer_.FlushBuffer();
             memset(buffer.data(), 0, size * 2 * sizeof(float));
             return;
         }
 
-        ptr = this->adaptiveBuffer.GetBuffer();
-        ret = this->waveBuffer.PopSamples(ptr, ret, true);
-        this->adaptiveBuffer.SetBufferOffset(ret);
+        ptr = adaptive_buffer_.GetBuffer();
+        ret = wave_buffer_.PopSamples(ptr, ret, true);
+        adaptive_buffer_.SetBufferOffset(ret);
 
-        tmpBuf = ptr;
-        tmpBufSize = ret;
+        tmp_buf = ptr;
+        tmp_buf_size = ret;
     } else {
-        if (this->adaptiveBuffer.PushFrames(buffer.data(), size)) {
-            this->adaptiveBuffer.SetBufferOffset(size);
+        if (adaptive_buffer_.PushFrames(buffer.data(), size)) {
+            adaptive_buffer_.SetBufferOffset(size);
 
-            tmpBuf = this->adaptiveBuffer.GetBuffer();
-            tmpBufSize = size;
+            tmp_buf = adaptive_buffer_.GetBuffer();
+            tmp_buf_size = size;
         } else {
-            this->adaptiveBuffer.FlushBuffer();
+            adaptive_buffer_.FlushBuffer();
             memset(buffer.data(), 0, size * 2 * sizeof(float));
             return;
         }
     }
 
-    if (tmpBufSize != 0) {
-        this->viperDdc.Process(tmpBuf, tmpBufSize);
-        this->spectrumExtend.Process(tmpBuf, tmpBufSize);
-        this->iirFilter.Process(tmpBuf, tmpBufSize);
-        this->dynamicEQ.Process(tmpBuf, tmpBufSize);
-        this->colorfulMusic.Process(tmpBuf, tmpBufSize);
-        this->stereoImager.Process(tmpBuf, tmpBufSize);
-        this->diffSurround.Process(tmpBuf, tmpBufSize);
-        this->playbackGain.Process(tmpBuf, tmpBufSize);
-        this->multibandCompressor.Process(tmpBuf, tmpBufSize);
-        this->fetCompressor.Process(tmpBuf, tmpBufSize);
-        this->dynamicSystem.Process(tmpBuf, tmpBufSize);
-        this->tubeSimulator.TubeProcess(tmpBuf, tmpBufSize);
-        this->psychoacousticBass.Process(tmpBuf, tmpBufSize);
-        this->viperBass.Process(tmpBuf, tmpBufSize);
-        this->viperBassMono.Process(tmpBuf, tmpBufSize);
-        this->viperClarity.Process(tmpBuf, tmpBufSize);
-        this->cure.Process(tmpBuf, tmpBufSize);
-        this->analogX.Process(tmpBuf, tmpBufSize);
-        this->reverberation.Process(tmpBuf, tmpBufSize);
-        this->speakerCorrection.Process(tmpBuf, tmpBufSize);
-        this->lufsTargeting.Process(tmpBuf, tmpBufSize);
+    if (tmp_buf_size != 0) {
+        viper_ddc_.Process(tmp_buf, tmp_buf_size);
+        spectrum_extend_.Process(tmp_buf, tmp_buf_size);
+        iir_filter_.Process(tmp_buf, tmp_buf_size);
+        dynamic_eq_.Process(tmp_buf, tmp_buf_size);
+        colorful_music_.Process(tmp_buf, tmp_buf_size);
+        stereo_imager_.Process(tmp_buf, tmp_buf_size);
+        diff_surround_.Process(tmp_buf, tmp_buf_size);
+        playback_gain_.Process(tmp_buf, tmp_buf_size);
+        multiband_compressor_.Process(tmp_buf, tmp_buf_size);
+        fet_compressor_.Process(tmp_buf, tmp_buf_size);
+        dynamic_system_.Process(tmp_buf, tmp_buf_size);
+        tube_simulator_.Process(tmp_buf, tmp_buf_size);
+        psychoacoustic_bass_.Process(tmp_buf, tmp_buf_size);
+        viper_bass_.Process(tmp_buf, tmp_buf_size);
+        viper_bass_mono_.Process(tmp_buf, tmp_buf_size);
+        viper_clarity_.Process(tmp_buf, tmp_buf_size);
+        cure_.Process(tmp_buf, tmp_buf_size);
+        analog_x_.Process(tmp_buf, tmp_buf_size);
+        reverberation_.Process(tmp_buf, tmp_buf_size);
+        speaker_correction_.Process(tmp_buf, tmp_buf_size);
+        lufs_targeting_.Process(tmp_buf, tmp_buf_size);
 
-        if (this->frameScale != 1.0) {
-            this->adaptiveBuffer.ScaleFrames(this->frameScale);
+        if (frame_scale_ != 1.0) {
+            adaptive_buffer_.ScaleFrames(frame_scale_);
         }
 
-        if (this->leftPan < 1.0 || this->rightPan < 1.0) {
-            this->adaptiveBuffer.PanFrames(this->leftPan, this->rightPan);
+        if (left_pan_ < 1.0 || right_pan_ < 1.0) {
+            adaptive_buffer_.PanFrames(left_pan_, right_pan_);
         }
 
-        for (uint32_t i = 0; i < tmpBufSize * 2; i += 2) {
-            tmpBuf[i] = this->softwareLimiters[0].Process(tmpBuf[i]);
-            tmpBuf[i + 1] = this->softwareLimiters[1].Process(tmpBuf[i + 1]);
+        for (uint32_t i = 0; i < tmp_buf_size * 2; i += 2) {
+            tmp_buf[i] = software_limiters_[0].Process(tmp_buf[i]);
+            tmp_buf[i + 1] = software_limiters_[1].Process(tmp_buf[i + 1]);
         }
 
-        if (!this->adaptiveBuffer.PopFrames(buffer.data(), tmpBufSize)) {
-            this->adaptiveBuffer.FlushBuffer();
+        if (!adaptive_buffer_.PopFrames(buffer.data(), tmp_buf_size)) {
+            adaptive_buffer_.FlushBuffer();
             memset(buffer.data(), 0, size * 2 * sizeof(float));
             return;
         }
 
-        if (size <= tmpBufSize) {
+        if (size <= tmp_buf_size) {
             return;
         }
     }
 
     memmove(
-        buffer.data() + (size - tmpBufSize) * 2,
+        buffer.data() + (size - tmp_buf_size) * 2,
         buffer.data(),
-        tmpBufSize * 2 * sizeof(float)
+        tmp_buf_size * 2 * sizeof(float)
     );
-    memset(buffer.data(), 0, (size - tmpBufSize) * 2 * sizeof(float));
+    memset(buffer.data(), 0, (size - tmp_buf_size) * 2 * sizeof(float));
 }
 
-void ViPER::DispatchCommand(
-    int param, int val1, int val2, int val3, int val4, uint32_t arrSize, signed char *arr
+void ViPER::DispatchRawParam(
+    const int param,
+    int val1,
+    const int val2,
+    const int val3,
+    int val4, // TODO: Remove this.
+    const uint32_t arr_size,
+    signed char *arr
 ) {
     switch (param) {
 
         // System
-        case PARAM_SET_RESET_STATUS: {
+        case kParamResetAllEffects: {
             VIPER_LOGI("ResetAllEffects");
-            this->resetAllEffects();
+            ResetAllEffects();
             break;
         }
 
-        // Convolver (HP and SPK share the same object)
-        case PARAM_HP_CONVOLVER_ENABLE:
-        case PARAM_SPK_CONVOLVER_ENABLE: {
-            VIPER_LOGI(
-                "Convolver[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->convolver.SetEnable(val1 != 0);
+        // Master Limiter
+        case kParamMasterLimiterThreshold: {
+            VIPER_LOGI("Master Limiter: threshold=%d", val1);
+            software_limiters_[0].SetGate(static_cast<float>(val1) / 100.0f);
+            software_limiters_[1].SetGate(static_cast<float>(val1) / 100.0f);
             break;
         }
-        case PARAM_HP_CONVOLVER_SET_KERNEL:
-        case PARAM_SPK_CONVOLVER_SET_KERNEL: {
-            if (arrSize > 0 && arr != nullptr) {
-                char path[256];
-                memset(path, 0, sizeof(path));
-                memcpy(path, arr, arrSize < 255 ? arrSize : 255);
-                VIPER_LOGI(
-                    "Convolver[%s]: SetKernel path=%s",
-                    param < 0x10300 ? "HP" : "SPK",
-                    path
-                );
-                this->convolver.SetKernel(path);
-            }
+        case kParamMasterLimiterOutputVolume: {
+            VIPER_LOGI("Master Limiter: output_vol=%d", val1);
+            frame_scale_ = static_cast<float>(val1) / 100.0f;
             break;
         }
-        case PARAM_HP_CONVOLVER_PREPARE_BUFFER:
-        case PARAM_SPK_CONVOLVER_PREPARE_BUFFER: {
-            VIPER_LOGI(
-                "Convolver[%s]: PrepareBuffer channels=%d frames=%d sr=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2,
-                val3
-            );
-            this->convolver.PrepareKernelBuffer(val1, val2, val3);
-            break;
-        }
-        case PARAM_HP_CONVOLVER_SET_BUFFER:
-        case PARAM_SPK_CONVOLVER_SET_BUFFER: {
-            VIPER_LOGI(
-                "Convolver[%s]: SetBuffer offset=%d size=%u",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                arrSize
-            );
-            this->convolver.SetKernelBuffer(val1, (float *) arr, arrSize);
-            break;
-        }
-        case PARAM_HP_CONVOLVER_COMMIT_BUFFER:
-        case PARAM_SPK_CONVOLVER_COMMIT_BUFFER: {
-            VIPER_LOGI(
-                "Convolver[%s]: CommitBuffer channels=%d frames=%d sr=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2,
-                val3
-            );
-            this->convolver.CommitKernelBuffer(val1, val2, val3);
-            break;
-        }
-        case PARAM_HP_CONVOLVER_CROSS_CHANNEL:
-        case PARAM_SPK_CONVOLVER_CROSS_CHANNEL: {
-            VIPER_LOGI(
-                "Convolver[%s]: CrossChannel=%d%%", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->convolver.SetCrossChannel((float) val1 / 100.0f);
-            break;
-        }
-
-        // DDC
-        case PARAM_HP_DDC_ENABLE:
-        case PARAM_SPK_DDC_ENABLE: {
-            VIPER_LOGI(
-                "DDC[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->viperDdc.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_DDC_COEFFICIENTS:
-        case PARAM_SPK_DDC_COEFFICIENTS: {
-            VIPER_LOGI(
-                "DDC[%s]: SetCoeffs arrSize=%u", param < 0x10300 ? "HP" : "SPK", arrSize
-            );
-            this->viperDdc.SetCoeffs(
-                arrSize, (float *) arr, (float *) (arr + arrSize * sizeof(float))
-            );
-            break;
-        }
-
-        // EQ (IIR Filter)
-        case PARAM_HP_EQ_ENABLE:
-        case PARAM_SPK_EQ_ENABLE: {
-            VIPER_LOGI("EQ[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF");
-            this->iirFilter.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_EQ_BAND_LEVEL:
-        case PARAM_SPK_EQ_BAND_LEVEL: {
-            VIPER_LOGI(
-                "EQ[%s]: band=%d level=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->iirFilter.SetBandLevel((uint32_t) val1, (float) val2 / 100.0f);
-            break;
-        }
-        case PARAM_HP_EQ_BAND_COUNT:
-        case PARAM_SPK_EQ_BAND_COUNT: {
-            VIPER_LOGI("EQ[%s]: bandCount=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->iirFilter.SetBandCount((uint32_t) val1);
-            break;
-        }
-
-        // Reverb
-        case PARAM_HP_REVERB_ENABLE:
-        case PARAM_SPK_REVERB_ENABLE: {
-            VIPER_LOGI(
-                "Reverb[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->reverberation.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_REVERB_ROOM_SIZE:
-        case PARAM_SPK_REVERB_ROOM_SIZE: {
-            VIPER_LOGI("Reverb[%s]: roomSize=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->reverberation.SetRoomSize((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_REVERB_ROOM_WIDTH:
-        case PARAM_SPK_REVERB_ROOM_WIDTH: {
-            VIPER_LOGI("Reverb[%s]: roomWidth=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->reverberation.SetWidth((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_REVERB_ROOM_DAMPENING:
-        case PARAM_SPK_REVERB_ROOM_DAMPENING: {
-            VIPER_LOGI("Reverb[%s]: dampening=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->reverberation.SetDamp((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_REVERB_ROOM_WET_SIGNAL:
-        case PARAM_SPK_REVERB_ROOM_WET_SIGNAL: {
-            VIPER_LOGI("Reverb[%s]: wet=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->reverberation.SetWet((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_REVERB_ROOM_DRY_SIGNAL:
-        case PARAM_SPK_REVERB_ROOM_DRY_SIGNAL: {
-            VIPER_LOGI("Reverb[%s]: dry=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->reverberation.SetDry((float) val1 / 100.0f);
-            break;
-        }
-
-        // AGC (Automatic Gain Control / Playback Gain)
-        case PARAM_HP_AGC_ENABLE:
-        case PARAM_SPK_AGC_ENABLE: {
-            VIPER_LOGI(
-                "AGC[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->playbackGain.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_AGC_RATIO:
-        case PARAM_SPK_AGC_RATIO: {
-            VIPER_LOGI("AGC[%s]: ratio=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->playbackGain.SetRatio((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_AGC_VOLUME:
-        case PARAM_SPK_AGC_VOLUME: {
-            VIPER_LOGI("AGC[%s]: volume=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->playbackGain.SetVolume((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_AGC_MAX_SCALER:
-        case PARAM_SPK_AGC_MAX_SCALER: {
-            VIPER_LOGI("AGC[%s]: maxScaler=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->playbackGain.SetMaxGainFactor((float) val1 / 100.0f);
-            break;
-        }
-
-        // Dynamic System
-        case PARAM_HP_DYNAMIC_SYSTEM_ENABLE:
-        case PARAM_SPK_DYNAMIC_SYSTEM_ENABLE: {
-            VIPER_LOGI(
-                "DynSys[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->dynamicSystem.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_SYSTEM_X_COEFFICIENTS:
-        case PARAM_SPK_DYNAMIC_SYSTEM_X_COEFFICIENTS: {
-            VIPER_LOGI(
-                "DynSys[%s]: xCoeffs=%d,%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->dynamicSystem.SetXCoeffs(val1, val2);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_SYSTEM_Y_COEFFICIENTS:
-        case PARAM_SPK_DYNAMIC_SYSTEM_Y_COEFFICIENTS: {
-            VIPER_LOGI(
-                "DynSys[%s]: yCoeffs=%d,%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->dynamicSystem.SetYCoeffs(val1, val2);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_SYSTEM_SIDE_GAIN:
-        case PARAM_SPK_DYNAMIC_SYSTEM_SIDE_GAIN: {
-            VIPER_LOGI(
-                "DynSys[%s]: sideGain=%d,%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->dynamicSystem.SetSideGain((float) val1 / 100.0f, (float) val2 / 100.0f);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_SYSTEM_STRENGTH:
-        case PARAM_SPK_DYNAMIC_SYSTEM_STRENGTH: {
-            VIPER_LOGI("DynSys[%s]: strength=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->dynamicSystem.SetBassGain((float) val1 / 100.0f);
-            break;
-        }
-
-        // Bass
-        case PARAM_HP_BASS_ENABLE:
-        case PARAM_SPK_BASS_ENABLE: {
-            VIPER_LOGI(
-                "Bass[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->viperBass.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_BASS_MODE:
-        case PARAM_SPK_BASS_MODE: {
-            VIPER_LOGI("Bass[%s]: mode=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperBass.SetProcessMode((ViPERBass::ProcessMode) val1);
-            break;
-        }
-        case PARAM_HP_BASS_FREQUENCY:
-        case PARAM_SPK_BASS_FREQUENCY: {
-            VIPER_LOGI("Bass[%s]: freq=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperBass.SetSpeaker((uint32_t) val1);
-            break;
-        }
-        case PARAM_HP_BASS_GAIN:
-        case PARAM_SPK_BASS_GAIN: {
-            VIPER_LOGI("Bass[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperBass.SetBassFactor((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_BASS_ANTI_POP:
-        case PARAM_SPK_BASS_ANTI_POP: {
-            VIPER_LOGI(
-                "Bass[%s]: antiPop=%s",
-                param < 0x10300 ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
-            );
-            this->viperBass.SetAntiPop(val1 != 0);
-            break;
-        }
-
-        // Bass Mono (v0.5.0 algorithm)
-        case PARAM_HP_BASS_MONO_ENABLE:
-        case PARAM_SPK_BASS_MONO_ENABLE: {
-            VIPER_LOGI(
-                "BassMono[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->viperBassMono.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_BASS_MONO_MODE:
-        case PARAM_SPK_BASS_MONO_MODE: {
-            VIPER_LOGI("BassMono[%s]: mode=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperBassMono.SetProcessMode((ViPERBassMono::ProcessMode) val1);
-            break;
-        }
-        case PARAM_HP_BASS_MONO_FREQUENCY:
-        case PARAM_SPK_BASS_MONO_FREQUENCY: {
-            VIPER_LOGI("BassMono[%s]: freq=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperBassMono.SetSpeaker((uint32_t) val1);
-            break;
-        }
-        case PARAM_HP_BASS_MONO_GAIN:
-        case PARAM_SPK_BASS_MONO_GAIN: {
-            VIPER_LOGI("BassMono[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperBassMono.SetBassFactor((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_BASS_MONO_ANTI_POP:
-        case PARAM_SPK_BASS_MONO_ANTI_POP: {
-            VIPER_LOGI(
-                "BassMono[%s]: antiPop=%s",
-                param < 0x10300 ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
-            );
-            this->viperBassMono.SetAntiPop(val1 != 0);
-            break;
-        }
-
-        // Clarity
-        case PARAM_HP_CLARITY_ENABLE:
-        case PARAM_SPK_CLARITY_ENABLE: {
-            VIPER_LOGI(
-                "Clarity[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->viperClarity.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_CLARITY_MODE:
-        case PARAM_SPK_CLARITY_MODE: {
-            VIPER_LOGI("Clarity[%s]: mode=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperClarity.SetProcessMode((ViPERClarity::ClarityMode) val1);
-            break;
-        }
-        case PARAM_HP_CLARITY_GAIN:
-        case PARAM_SPK_CLARITY_GAIN: {
-            VIPER_LOGI("Clarity[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->viperClarity.SetClarity((float) val1 / 100.0f);
-            break;
-        }
-
-        // Headphone Surround (VHE)
-        case PARAM_HP_HEADPHONE_SURROUND_ENABLE:
-        case PARAM_SPK_HEADPHONE_SURROUND_ENABLE: {
-            VIPER_LOGI(
-                "VHE[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->vhe.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_HEADPHONE_SURROUND_STRENGTH:
-        case PARAM_SPK_HEADPHONE_SURROUND_STRENGTH: {
-            VIPER_LOGI("VHE[%s]: strength=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->vhe.SetEffectLevel(val1);
-            break;
-        }
-
-        // Spectrum Extension
-        case PARAM_HP_SPECTRUM_EXTENSION_ENABLE:
-        case PARAM_SPK_SPECTRUM_EXTENSION_ENABLE: {
-            VIPER_LOGI(
-                "SpecExt[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->spectrumExtend.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_SPECTRUM_EXTENSION_BARK:
-        case PARAM_SPK_SPECTRUM_EXTENSION_BARK: {
-            VIPER_LOGI("SpecExt[%s]: bark=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->spectrumExtend.SetReferenceFrequency(val1);
-            break;
-        }
-        case PARAM_HP_SPECTRUM_EXTENSION_BARK_RECONSTRUCT:
-        case PARAM_SPK_SPECTRUM_EXTENSION_BARK_RECONSTRUCT: {
-            VIPER_LOGI(
-                "SpecExt[%s]: reconstruct=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->spectrumExtend.SetExciter((float) val1 / 100.0f);
-            break;
-        }
-
-        // Field Surround (Colorful Music)
-        case PARAM_HP_FIELD_SURROUND_ENABLE:
-        case PARAM_SPK_FIELD_SURROUND_ENABLE: {
-            VIPER_LOGI(
-                "FieldSurr[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->colorfulMusic.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_FIELD_SURROUND_WIDENING:
-        case PARAM_SPK_FIELD_SURROUND_WIDENING: {
-            VIPER_LOGI("FieldSurr[%s]: widen=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->colorfulMusic.SetWidenValue((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_FIELD_SURROUND_MID_IMAGE:
-        case PARAM_SPK_FIELD_SURROUND_MID_IMAGE: {
-            VIPER_LOGI(
-                "FieldSurr[%s]: midImage=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->colorfulMusic.SetMidImageValue((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_FIELD_SURROUND_DEPTH:
-        case PARAM_SPK_FIELD_SURROUND_DEPTH: {
-            VIPER_LOGI("FieldSurr[%s]: depth=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->colorfulMusic.SetDepthValue((short) val1);
-            break;
-        }
-
-        // Differential Surround
-        case PARAM_HP_DIFF_SURROUND_ENABLE:
-        case PARAM_SPK_DIFF_SURROUND_ENABLE: {
-            VIPER_LOGI(
-                "DiffSurr[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->diffSurround.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_DIFF_SURROUND_DELAY:
-        case PARAM_SPK_DIFF_SURROUND_DELAY: {
-            VIPER_LOGI("DiffSurr[%s]: delay=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->diffSurround.SetDelayTime((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_DIFF_SURROUND_REVERSE:
-        case PARAM_SPK_DIFF_SURROUND_REVERSE: {
-            VIPER_LOGI(
-                "DiffSurr[%s]: reverse=%s",
-                param < 0x10300 ? "HP" : "SPK",
-                val1 ? "ON" : "OFF"
-            );
-            this->diffSurround.SetReverse(val1 != 0);
-            break;
-        }
-        case PARAM_HP_DIFF_SURROUND_WET_DRY_MIX:
-        case PARAM_SPK_DIFF_SURROUND_WET_DRY_MIX: {
-            VIPER_LOGI(
-                "DiffSurr[%s]: wetDryMix=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->diffSurround.SetWetDryMix((float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_DIFF_SURROUND_LP_CUTOFF:
-        case PARAM_SPK_DIFF_SURROUND_LP_CUTOFF: {
-            VIPER_LOGI("DiffSurr[%s]: lpCutoff=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->diffSurround.SetLPCutoff((float) val1);
-            break;
-        }
-
-        // Cure (Crossfeed)
-        case PARAM_HP_CURE_ENABLE:
-        case PARAM_SPK_CURE_ENABLE: {
-            VIPER_LOGI(
-                "Cure[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->cure.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_CURE_STRENGTH:
-        case PARAM_SPK_CURE_STRENGTH: {
-            VIPER_LOGI("Cure[%s]: strength=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            switch (val1) {
-                case 0: {
-                    struct Crossfeed::Preset preset = {.cutoff = 650, .feedback = 95};
-                    this->cure.SetPreset(preset);
-                    break;
-                }
-                case 1: {
-                    struct Crossfeed::Preset preset = {.cutoff = 700, .feedback = 60};
-                    this->cure.SetPreset(preset);
-                    break;
-                }
-                case 2: {
-                    struct Crossfeed::Preset preset = {.cutoff = 700, .feedback = 45};
-                    this->cure.SetPreset(preset);
-                    break;
-                }
-            }
-            break;
-        }
-
-        // Tube Simulator
-        case PARAM_HP_TUBE_SIMULATOR_ENABLE:
-        case PARAM_SPK_TUBE_SIMULATOR_ENABLE: {
-            VIPER_LOGI(
-                "TubeSim[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->tubeSimulator.SetEnable(val1 != 0);
-            break;
-        }
-
-        // AnalogX
-        case PARAM_HP_ANALOGX_ENABLE:
-        case PARAM_SPK_ANALOGX_ENABLE: {
-            VIPER_LOGI(
-                "AnalogX[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->analogX.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_ANALOGX_MODE:
-        case PARAM_SPK_ANALOGX_MODE: {
-            VIPER_LOGI("AnalogX[%s]: mode=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->analogX.SetProcessingModel(val1);
-            break;
-        }
-
-        // Output / Limiter / Pan
-        case PARAM_HP_OUTPUT_VOLUME:
-        case PARAM_SPK_OUTPUT_VOLUME: {
-            VIPER_LOGI("OutputVol[%s]: %d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->frameScale = (float) val1 / 100.0f;
-            break;
-        }
-        case PARAM_HP_CHANNEL_PAN:
-        case PARAM_SPK_CHANNEL_PAN: {
-            float tmp = (float) val1 / 100.0f;
-            VIPER_LOGI("Pan[%s]: %d", param < 0x10300 ? "HP" : "SPK", val1);
+        case kParamMasterLimiterChannelPan: {
+            VIPER_LOGI("Master Limiter: pan=%d", val1);
+            const float tmp = static_cast<float>(val1) / 100.0f;
             if (tmp < 0.0f) {
-                this->leftPan = 1.0f;
-                this->rightPan = 1.0f + tmp;
+                left_pan_ = 1.0f;
+                right_pan_ = 1.0f + tmp;
             } else {
-                this->leftPan = 1.0f - tmp;
-                this->rightPan = 1.0f;
+                left_pan_ = 1.0f - tmp;
+                right_pan_ = 1.0f;
             }
             break;
         }
-        case PARAM_HP_LIMITER:
-        case PARAM_SPK_LIMITER: {
-            VIPER_LOGI("Limiter[%s]: %d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->softwareLimiters[0].SetGate((float) val1 / 100.0f);
-            this->softwareLimiters[1].SetGate((float) val1 / 100.0f);
-            break;
-        }
 
-        // FET Compressor
-        case PARAM_HP_FET_COMPRESSOR_ENABLE:
-        case PARAM_SPK_FET_COMPRESSOR_ENABLE: {
-            VIPER_LOGI(
-                "FET[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->fetCompressor.SetParameter(
-                FETCompressor::ENABLE, (float) val1 / 100.0f
-            );
+        // Playback Gain Control
+        case kParamPlaybackGainControlEnable: {
+            VIPER_LOGI("PlaybackGain: %s", val1 ? "ON" : "OFF");
+            playback_gain_.SetEnable(val1 != 0);
             break;
         }
-        case PARAM_HP_FET_COMPRESSOR_THRESHOLD:
-        case PARAM_SPK_FET_COMPRESSOR_THRESHOLD: {
-            VIPER_LOGI("FET[%s]: threshold=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::THRESHOLD, (float) val1 / 100.0f
-            );
+        case kParamPlaybackGainControlStrength: {
+            VIPER_LOGI("PlaybackGain: strength=%d", val1);
+            playback_gain_.SetRatio(static_cast<float>(val1) / 100.0f);
             break;
         }
-        case PARAM_HP_FET_COMPRESSOR_RATIO:
-        case PARAM_SPK_FET_COMPRESSOR_RATIO: {
-            VIPER_LOGI("FET[%s]: ratio=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(FETCompressor::RATIO, (float) val1 / 100.0f);
+        case kParamPlaybackGainControlMaxGain: {
+            VIPER_LOGI("PlaybackGain: max_gain=%d", val1);
+            playback_gain_.SetMaxGainFactor(static_cast<float>(val1) / 100.0f);
             break;
         }
-        case PARAM_HP_FET_COMPRESSOR_KNEE:
-        case PARAM_SPK_FET_COMPRESSOR_KNEE: {
-            VIPER_LOGI("FET[%s]: knee=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(FETCompressor::KNEE, (float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_AUTO_KNEE:
-        case PARAM_SPK_FET_COMPRESSOR_AUTO_KNEE: {
-            VIPER_LOGI("FET[%s]: autoKnee=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::AUTO_KNEE, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_GAIN:
-        case PARAM_SPK_FET_COMPRESSOR_GAIN: {
-            VIPER_LOGI("FET[%s]: gain=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(FETCompressor::GAIN, (float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_AUTO_GAIN:
-        case PARAM_SPK_FET_COMPRESSOR_AUTO_GAIN: {
-            VIPER_LOGI("FET[%s]: autoGain=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::AUTO_GAIN, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_ATTACK:
-        case PARAM_SPK_FET_COMPRESSOR_ATTACK: {
-            VIPER_LOGI("FET[%s]: attack=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::ATTACK, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_AUTO_ATTACK:
-        case PARAM_SPK_FET_COMPRESSOR_AUTO_ATTACK: {
-            VIPER_LOGI("FET[%s]: autoAttack=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::AUTO_ATTACK, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_RELEASE:
-        case PARAM_SPK_FET_COMPRESSOR_RELEASE: {
-            VIPER_LOGI("FET[%s]: release=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::RELEASE, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_AUTO_RELEASE:
-        case PARAM_SPK_FET_COMPRESSOR_AUTO_RELEASE: {
-            VIPER_LOGI("FET[%s]: autoRelease=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::AUTO_RELEASE, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_KNEE_MULTI:
-        case PARAM_SPK_FET_COMPRESSOR_KNEE_MULTI: {
-            VIPER_LOGI("FET[%s]: kneeMulti=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::KNEE_MULTI, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_MAX_ATTACK:
-        case PARAM_SPK_FET_COMPRESSOR_MAX_ATTACK: {
-            VIPER_LOGI("FET[%s]: maxAttack=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::MAX_ATTACK, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_MAX_RELEASE:
-        case PARAM_SPK_FET_COMPRESSOR_MAX_RELEASE: {
-            VIPER_LOGI("FET[%s]: maxRelease=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::MAX_RELEASE, (float) val1 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_CREST:
-        case PARAM_SPK_FET_COMPRESSOR_CREST: {
-            VIPER_LOGI("FET[%s]: crest=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(FETCompressor::CREST, (float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_ADAPT:
-        case PARAM_SPK_FET_COMPRESSOR_ADAPT: {
-            VIPER_LOGI("FET[%s]: adapt=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(FETCompressor::ADAPT, (float) val1 / 100.0f);
-            break;
-        }
-        case PARAM_HP_FET_COMPRESSOR_NO_CLIP:
-        case PARAM_SPK_FET_COMPRESSOR_NO_CLIP: {
-            VIPER_LOGI("FET[%s]: noClip=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->fetCompressor.SetParameter(
-                FETCompressor::NO_CLIP, (float) val1 / 100.0f
-            );
-            break;
-        }
-
-        // Multiband Compressor
-        case PARAM_HP_MULTIBAND_COMP_ENABLE:
-        case PARAM_SPK_MULTIBAND_COMP_ENABLE: {
-            VIPER_LOGI(
-                "MBComp[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->multibandCompressor.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_COUNT:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_COUNT: {
-            VIPER_LOGI("MBComp[%s]: bandCount=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->multibandCompressor.SetBandCount(val1);
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_CROSSOVER_FREQ:
-        case PARAM_SPK_MULTIBAND_COMP_CROSSOVER_FREQ: {
-            VIPER_LOGI(
-                "MBComp[%s]: xover[%d]=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->multibandCompressor.SetCrossoverFrequency(val1, (float) val2);
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_THRESHOLD:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_THRESHOLD: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] threshold=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::THRESHOLD, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_RATIO:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_RATIO: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] ratio=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::RATIO, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_KNEE:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_KNEE: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] knee=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::KNEE, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_KNEE:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_KNEE: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] autoKnee=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::AUTO_KNEE, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_GAIN:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_GAIN: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::GAIN, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_GAIN:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_GAIN: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] autoGain=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::AUTO_GAIN, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_ATTACK:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_ATTACK: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] attack=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::ATTACK, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_ATTACK:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_ATTACK: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] autoAttack=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::AUTO_ATTACK, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_RELEASE:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_RELEASE: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] release=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::RELEASE, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_AUTO_RELEASE:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_AUTO_RELEASE: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] autoRelease=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::AUTO_RELEASE, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_KNEE_MULTI:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_KNEE_MULTI: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] kneeMulti=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::KNEE_MULTI, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_MAX_ATTACK:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_MAX_ATTACK: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] maxAttack=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::MAX_ATTACK, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_MAX_RELEASE:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_MAX_RELEASE: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] maxRelease=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::MAX_RELEASE, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_CREST:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_CREST: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] crest=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::CREST, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_ADAPT:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_ADAPT: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] adapt=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::ADAPT, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_NO_CLIP:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_NO_CLIP: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] noClip=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::NO_CLIP, (float) val2 / 100.0f
-            );
-            break;
-        }
-        case PARAM_HP_MULTIBAND_COMP_BAND_ENABLE:
-        case PARAM_SPK_MULTIBAND_COMP_BAND_ENABLE: {
-            VIPER_LOGI(
-                "MBComp[%s]: band[%d] enable=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->multibandCompressor.SetBandParameter(
-                val1, FETCompressor::ENABLE, (float) val2 / 100.0f
-            );
-            break;
-        }
-
-        // Stereo Imager
-        case PARAM_HP_STEREO_IMAGER_ENABLE:
-        case PARAM_SPK_STEREO_IMAGER_ENABLE: {
-            VIPER_LOGI(
-                "StereoImg[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->stereoImager.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_STEREO_IMAGER_LOW_WIDTH:
-        case PARAM_SPK_STEREO_IMAGER_LOW_WIDTH: {
-            VIPER_LOGI(
-                "StereoImg[%s]: lowWidth=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->stereoImager.SetLowWidth((float) val1);
-            break;
-        }
-        case PARAM_HP_STEREO_IMAGER_MID_WIDTH:
-        case PARAM_SPK_STEREO_IMAGER_MID_WIDTH: {
-            VIPER_LOGI(
-                "StereoImg[%s]: midWidth=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->stereoImager.SetMidWidth((float) val1);
-            break;
-        }
-        case PARAM_HP_STEREO_IMAGER_HIGH_WIDTH:
-        case PARAM_SPK_STEREO_IMAGER_HIGH_WIDTH: {
-            VIPER_LOGI(
-                "StereoImg[%s]: highWidth=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->stereoImager.SetHighWidth((float) val1);
-            break;
-        }
-        case PARAM_HP_STEREO_IMAGER_LOW_CROSSOVER:
-        case PARAM_SPK_STEREO_IMAGER_LOW_CROSSOVER: {
-            VIPER_LOGI(
-                "StereoImg[%s]: lowXover=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->stereoImager.SetLowCrossover((float) val1);
-            break;
-        }
-        case PARAM_HP_STEREO_IMAGER_HIGH_CROSSOVER:
-        case PARAM_SPK_STEREO_IMAGER_HIGH_CROSSOVER: {
-            VIPER_LOGI(
-                "StereoImg[%s]: highXover=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->stereoImager.SetHighCrossover((float) val1);
-            break;
-        }
-
-        // Dynamic EQ
-        case PARAM_HP_DYNAMIC_EQ_ENABLE:
-        case PARAM_SPK_DYNAMIC_EQ_ENABLE: {
-            VIPER_LOGI(
-                "DynEQ[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->dynamicEQ.SetEnable(val1 != 0);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_COUNT:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_COUNT: {
-            VIPER_LOGI("DynEQ[%s]: bandCount=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->dynamicEQ.SetBandCount(val1);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_FREQ:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_FREQ: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] freq=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::FREQ, (float) val2);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_Q:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_Q: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] Q=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::Q, (float) val2 / 100.0f);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_GAIN:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_GAIN: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] gain=%d", param < 0x10300 ? "HP" : "SPK", val1, val2
-            );
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::GAIN, (float) val2 / 10.0f);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_THRESHOLD:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_THRESHOLD: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] threshold=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->dynamicEQ.SetBandParam(
-                val1, DynamicEQ::THRESHOLD, (float) val2 / 10.0f
-            );
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_ATTACK:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_ATTACK: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] attack=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::ATTACK, (float) val2);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_RELEASE:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_RELEASE: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] release=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::RELEASE, (float) val2);
-            break;
-        }
-        case PARAM_HP_DYNAMIC_EQ_BAND_FILTER_TYPE:
-        case PARAM_SPK_DYNAMIC_EQ_BAND_FILTER_TYPE: {
-            VIPER_LOGI(
-                "DynEQ[%s]: band[%d] filterType=%d",
-                param < 0x10300 ? "HP" : "SPK",
-                val1,
-                val2
-            );
-            this->dynamicEQ.SetBandParam(val1, DynamicEQ::FILTER_TYPE, (float) val2);
+        case kParamPlaybackGainControlOutputThreshold: {
+            VIPER_LOGI("PlaybackGain: output_threshold=%d", val1);
+            playback_gain_.SetVolume(static_cast<float>(val1) / 100.0f);
             break;
         }
 
         // LUFS Targeting
-        case PARAM_HP_LUFS_ENABLE:
-        case PARAM_SPK_LUFS_ENABLE: {
-            VIPER_LOGI(
-                "LUFS[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
+        case kParamLufsEnable: {
+            VIPER_LOGI("LUFS: %s", val1 ? "ON" : "OFF");
+            lufs_targeting_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamLufsTarget: {
+            VIPER_LOGI("LUFS: target=%d", val1);
+            lufs_targeting_.SetTargetLUFS(static_cast<float>(val1) / -10.0f);
+            break;
+        }
+        case kParamLufsMaxGain: {
+            VIPER_LOGI("LUFS: max_gain=%d", val1);
+            lufs_targeting_.SetMaxGain(static_cast<float>(val1) / 10.0f);
+            break;
+        }
+        case kParamLufsSpeed: {
+            VIPER_LOGI("LUFS: speed=%d", val1);
+            lufs_targeting_.SetSpeed(val1);
+            break;
+        }
+
+        // FET Compressor
+        case kParamFetCompressorEnable: {
+            VIPER_LOGI("FET: %s", val1 ? "ON" : "OFF");
+            fet_compressor_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamFetCompressorThreshold: {
+            VIPER_LOGI("FET: threshold=%d", val1);
+            fet_compressor_.SetThreshold(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorRatio: {
+            VIPER_LOGI("FET: ratio=%d", val1);
+            fet_compressor_.SetRatio(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorKnee: {
+            VIPER_LOGI("FET: knee=%d", val1);
+            fet_compressor_.SetKnee(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorKneeAuto: {
+            VIPER_LOGI("FET: knee_auto=%d", val1);
+            fet_compressor_.SetKneeAuto(val1 != 0);
+            break;
+        }
+        case kParamFetCompressorGain: {
+            VIPER_LOGI("FET: gain=%d", val1);
+            fet_compressor_.SetGain(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorGainAuto: {
+            VIPER_LOGI("FET: gain_auto=%d", val1);
+            fet_compressor_.SetGainAuto(val1 != 0);
+            break;
+        }
+        case kParamFetCompressorAttack: {
+            VIPER_LOGI("FET: attack=%d", val1);
+            fet_compressor_.SetAttack(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorAttackAuto: {
+            VIPER_LOGI("FET: attack_auto=%d", val1);
+            fet_compressor_.SetAttackAuto(val1 != 0);
+            break;
+        }
+        case kParamFetCompressorRelease: {
+            VIPER_LOGI("FET: release=%d", val1);
+            fet_compressor_.SetRelease(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorReleaseAuto: {
+            VIPER_LOGI("FET: release_auto=%d", val1);
+            fet_compressor_.SetReleaseAuto(val1 != 0);
+            break;
+        }
+        case kParamFetCompressorKneeMulti: {
+            VIPER_LOGI("FET: knee_multi=%d", val1);
+            fet_compressor_.SetKneeMulti(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorMaxAttack: {
+            VIPER_LOGI("FET: max_attack=%d", val1);
+            fet_compressor_.SetMaxAttack(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorMaxRelease: {
+            VIPER_LOGI("FET: max_release=%d", val1);
+            fet_compressor_.SetMaxRelease(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorCrest: {
+            VIPER_LOGI("FET: crest=%d", val1);
+            fet_compressor_.SetCrest(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorAdapt: {
+            VIPER_LOGI("FET: adapt=%d", val1);
+            fet_compressor_.SetAdapt(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFetCompressorNoClip: {
+            VIPER_LOGI("FET: no_clip=%d", val1);
+            fet_compressor_.SetNoClip(val1 != 0);
+            break;
+        }
+
+        // Bass
+        case kParamBassEnable: {
+            VIPER_LOGI("Bass: %s", val1 ? "ON" : "OFF");
+            viper_bass_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamBassMode: {
+            VIPER_LOGI("Bass: mode=%d", val1);
+            viper_bass_.SetProcessMode(static_cast<ViPERBass::ProcessMode>(val1));
+            break;
+        }
+        case kParamBassFrequency: {
+            VIPER_LOGI("Bass: freq=%d", val1);
+            viper_bass_.SetFrequency(static_cast<uint32_t>(val1));
+            break;
+        }
+        case kParamBassGain: {
+            VIPER_LOGI("Bass: gain=%d", val1);
+            viper_bass_.SetBassFactor(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamBassAntiPop: {
+            VIPER_LOGI("Bass: anti_pop=%s", val1 ? "ON" : "OFF");
+            viper_bass_.SetAntiPop(val1 != 0);
+            break;
+        }
+
+        // Bass Mono
+        case kParamBassMonoEnable: {
+            VIPER_LOGI("BassMono: %s", val1 ? "ON" : "OFF");
+            viper_bass_mono_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamBassMonoMode: {
+            VIPER_LOGI("BassMono: mode=%d", val1);
+            viper_bass_mono_.SetProcessMode(
+                static_cast<ViPERBassMono::ProcessMode>(val1)
             );
-            this->lufsTargeting.SetEnable(val1 != 0);
             break;
         }
-        case PARAM_HP_LUFS_TARGET:
-        case PARAM_SPK_LUFS_TARGET: {
-            VIPER_LOGI("LUFS[%s]: target=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->lufsTargeting.SetTargetLUFS((float) val1 / -10.0f);
+        case kParamBassMonoFrequency: {
+            VIPER_LOGI("BassMono: freq=%d", val1);
+            viper_bass_mono_.SetFrequency(static_cast<uint32_t>(val1));
             break;
         }
-        case PARAM_HP_LUFS_MAX_GAIN:
-        case PARAM_SPK_LUFS_MAX_GAIN: {
-            VIPER_LOGI("LUFS[%s]: maxGain=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->lufsTargeting.SetMaxGain((float) val1 / 10.0f);
+        case kParamBassMonoGain: {
+            VIPER_LOGI("BassMono: gain=%d", val1);
+            viper_bass_mono_.SetBassFactor(static_cast<float>(val1) / 100.0f);
             break;
         }
-        case PARAM_HP_LUFS_SPEED:
-        case PARAM_SPK_LUFS_SPEED: {
-            VIPER_LOGI("LUFS[%s]: speed=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->lufsTargeting.SetSpeed(val1);
+        case kParamBassMonoAntiPop: {
+            VIPER_LOGI("BassMono: anti_pop=%s", val1 ? "ON" : "OFF");
+            viper_bass_mono_.SetAntiPop(val1 != 0);
             break;
         }
 
         // Psychoacoustic Bass
-        case PARAM_HP_PSYCHO_BASS_ENABLE:
-        case PARAM_SPK_PSYCHO_BASS_ENABLE: {
-            VIPER_LOGI(
-                "PsychoBass[%s]: %s", param < 0x10300 ? "HP" : "SPK", val1 ? "ON" : "OFF"
-            );
-            this->psychoacousticBass.SetEnable(val1 != 0);
+        case kParamPsychoacousticBassEnable: {
+            VIPER_LOGI("PsychoBass: %s", val1 ? "ON" : "OFF");
+            psychoacoustic_bass_.SetEnable(val1 != 0);
             break;
         }
-        case PARAM_HP_PSYCHO_BASS_CUTOFF:
-        case PARAM_SPK_PSYCHO_BASS_CUTOFF: {
-            VIPER_LOGI("PsychoBass[%s]: cutoff=%d", param < 0x10300 ? "HP" : "SPK", val1);
-            this->psychoacousticBass.SetCutoff((uint32_t) val1);
+        case kParamPsychoacousticBassCutoff: {
+            VIPER_LOGI("PsychoBass: cutoff=%d", val1);
+            psychoacoustic_bass_.SetCutoff(static_cast<uint32_t>(val1));
             break;
         }
-        case PARAM_HP_PSYCHO_BASS_INTENSITY:
-        case PARAM_SPK_PSYCHO_BASS_INTENSITY: {
-            VIPER_LOGI(
-                "PsychoBass[%s]: intensity=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->psychoacousticBass.SetIntensity((uint32_t) val1);
+        case kParamPsychoacousticBassIntensity: {
+            VIPER_LOGI("PsychoBass: intensity=%d", val1);
+            psychoacoustic_bass_.SetIntensity(static_cast<uint32_t>(val1));
             break;
         }
-        case PARAM_HP_PSYCHO_BASS_HARMONIC_ORDER:
-        case PARAM_SPK_PSYCHO_BASS_HARMONIC_ORDER: {
-            VIPER_LOGI(
-                "PsychoBass[%s]: harmonicOrder=%d", param < 0x10300 ? "HP" : "SPK", val1
-            );
-            this->psychoacousticBass.SetHarmonicOrder((uint32_t) val1);
+        case kParamPsychoacousticBassHarmonicOrder: {
+            VIPER_LOGI("PsychoBass: harmonic_order=%d", val1);
+            psychoacoustic_bass_.SetHarmonicOrder(static_cast<uint32_t>(val1));
             break;
         }
-        case PARAM_HP_PSYCHO_BASS_ORIGINAL_LEVEL:
-        case PARAM_SPK_PSYCHO_BASS_ORIGINAL_LEVEL: {
-            VIPER_LOGI(
-                "PsychoBass[%s]: originalLevel=%d", param < 0x10300 ? "HP" : "SPK", val1
+        case kParamPsychoacousticBassOriginalLevel: {
+            VIPER_LOGI("PsychoBass: original_level=%d", val1);
+            psychoacoustic_bass_.SetOriginalBassLevel(static_cast<uint32_t>(val1));
+            break;
+        }
+
+        // Spectrum Extension
+        case kParamSpectrumExtensionEnable: {
+            VIPER_LOGI("SpecExt: %s", val1 ? "ON" : "OFF");
+            spectrum_extend_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamSpectrumExtensionStrength: {
+            VIPER_LOGI("SpecExt: strength=%d", val1);
+            spectrum_extend_.SetReferenceFrequency(val1);
+            break;
+        }
+        case kParamSpectrumExtensionExciter: {
+            VIPER_LOGI("SpecExt: exciter=%d", val1);
+            spectrum_extend_.SetExciter(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+
+        // Equalizer (IIR Filter)
+        case kParamEqualizerEnable: {
+            VIPER_LOGI("EQ: %s", val1 ? "ON" : "OFF");
+            iir_filter_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamEqualizerBandLevel: {
+            VIPER_LOGI("EQ: band=%d level=%d", val1, val2);
+            iir_filter_.SetBandLevel(
+                static_cast<uint32_t>(val1), static_cast<float>(val2) / 100.0f
             );
-            this->psychoacousticBass.SetOriginalBassLevel((uint32_t) val1);
+            break;
+        }
+        case kParamEqualizerBandCount: {
+            VIPER_LOGI("EQ: band_count=%d", val1);
+            iir_filter_.SetBandCount(static_cast<uint32_t>(val1));
+            break;
+        }
+
+        // Convolver
+        case kParamConvolverEnable: {
+            VIPER_LOGI("Convolver: %s", val1 ? "ON" : "OFF");
+            convolver_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamConvolverSetKernel: {
+            if (arr_size > 0 && arr != nullptr) {
+                char path[256] = {};
+                memcpy(path, arr, arr_size < 255 ? arr_size : 255);
+                VIPER_LOGI("Convolver: SetKernel path=%s", path);
+                convolver_.SetKernel(path);
+            }
+            break;
+        }
+        case kParamConvolverPrepareBuffer: {
+            VIPER_LOGI(
+                "Convolver: PrepareBuffer buf_size=%d ch=%d reset=%d", val1, val2, val3
+            );
+            convolver_.PrepareKernelBuffer(val1, val2, val3 != 0);
+            break;
+        }
+        case kParamConvolverSetBuffer: {
+            VIPER_LOGI("Convolver: SetBuffer size=%u", arr_size);
+            convolver_.SetKernelBuffer(reinterpret_cast<float *>(arr), arr_size);
+            break;
+        }
+        case kParamConvolverCommitBuffer: {
+            VIPER_LOGI(
+                "Convolver: CommitBuffer channels=%d frames=%d sr=%d", val1, val2, val3
+            );
+            convolver_.CommitKernelBuffer(val1, val2, val3);
+            break;
+        }
+        case kParamConvolverCrossChannel: {
+            VIPER_LOGI("Convolver: cross_ch=%d%%", val1);
+            convolver_.SetCrossChannel(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+
+        // DDC
+        case kParamDdcEnable: {
+            VIPER_LOGI("DDC: %s", val1 ? "ON" : "OFF");
+            viper_ddc_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamDdcCoefficients: {
+            VIPER_LOGI("DDC: SetCoeffs arr_size=%u", arr_size);
+            viper_ddc_.SetCoeffs(
+                arr_size,
+                reinterpret_cast<float *>(arr),
+                reinterpret_cast<float *>(arr + arr_size * sizeof(float))
+            );
+            break;
+        }
+
+        // Field Surround (Colorful Music)
+        case kParamFieldSurroundEnable: {
+            VIPER_LOGI("FieldSurr: %s", val1 ? "ON" : "OFF");
+            colorful_music_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamFieldSurroundWidening: {
+            VIPER_LOGI("FieldSurr: widen=%d", val1);
+            colorful_music_.SetWidenValue(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFieldSurroundMidImage: {
+            VIPER_LOGI("FieldSurr: mid_image=%d", val1);
+            colorful_music_.SetMidImageValue(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamFieldSurroundDepth: {
+            VIPER_LOGI("FieldSurr: depth=%d", val1);
+            colorful_music_.SetDepthValue(val1);
+            break;
+        }
+
+        // Differential Surround
+        case kParamDiffSurroundEnable: {
+            VIPER_LOGI("DiffSurr: %s", val1 ? "ON" : "OFF");
+            diff_surround_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamDiffSurroundDelay: {
+            VIPER_LOGI("DiffSurr: delay=%d", val1);
+            diff_surround_.SetDelayTime(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamDiffSurroundReverse: {
+            VIPER_LOGI("DiffSurr: reverse=%s", val1 ? "ON" : "OFF");
+            diff_surround_.SetReverse(val1 != 0);
+            break;
+        }
+        case kParamDiffSurroundWetDryMix: {
+            VIPER_LOGI("DiffSurr: wet_dry_mix=%d", val1);
+            diff_surround_.SetWetDryMix(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamDiffSurroundLpCutoff: {
+            VIPER_LOGI("DiffSurr: lp_cutoff=%d", val1);
+            diff_surround_.SetLPCutoff(static_cast<float>(val1));
+            break;
+        }
+
+        // Stereo Imager
+        case kParamStereoImagerEnable: {
+            VIPER_LOGI("StereoImg: %s", val1 ? "ON" : "OFF");
+            stereo_imager_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamStereoImagerLowWidth: {
+            VIPER_LOGI("StereoImg: low_width=%d", val1);
+            stereo_imager_.SetLowWidth(static_cast<float>(val1));
+            break;
+        }
+        case kParamStereoImagerMidWidth: {
+            VIPER_LOGI("StereoImg: mid_width=%d", val1);
+            stereo_imager_.SetMidWidth(static_cast<float>(val1));
+            break;
+        }
+        case kParamStereoImagerHighWidth: {
+            VIPER_LOGI("StereoImg: high_width=%d", val1);
+            stereo_imager_.SetHighWidth(static_cast<float>(val1));
+            break;
+        }
+        case kParamStereoImagerLowCrossover: {
+            VIPER_LOGI("StereoImg: low_crossover=%d", val1);
+            stereo_imager_.SetLowCrossover(static_cast<float>(val1));
+            break;
+        }
+        case kParamStereoImagerHighCrossover: {
+            VIPER_LOGI("StereoImg: high_crossover=%d", val1);
+            stereo_imager_.SetHighCrossover(static_cast<float>(val1));
+            break;
+        }
+
+        // Headphone Surround (VHE)
+        case kParamHeadphoneSurroundEnable: {
+            VIPER_LOGI("VHE: %s", val1 ? "ON" : "OFF");
+            vhe_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamHeadphoneSurroundQuality: {
+            VIPER_LOGI("VHE: quality=%d", val1);
+            vhe_.SetEffectLevel(val1);
+            break;
+        }
+
+        // Reverb
+        case kParamReverbEnable: {
+            VIPER_LOGI("Reverb: %s", val1 ? "ON" : "OFF");
+            reverberation_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamReverbRoomSize: {
+            VIPER_LOGI("Reverb: room_size=%d", val1);
+            reverberation_.SetRoomSize(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamReverbWidth: {
+            VIPER_LOGI("Reverb: width=%d", val1);
+            reverberation_.SetWidth(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamReverbDamp: {
+            VIPER_LOGI("Reverb: damp=%d", val1);
+            reverberation_.SetDamp(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamReverbWet: {
+            VIPER_LOGI("Reverb: wet=%d", val1);
+            reverberation_.SetWet(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+        case kParamReverbDry: {
+            VIPER_LOGI("Reverb: dry=%d", val1);
+            reverberation_.SetDry(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+
+        // Dynamic System
+        case kParamDynamicSystemEnable: {
+            VIPER_LOGI("DynSys: %s", val1 ? "ON" : "OFF");
+            dynamic_system_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamDynamicSystemXCoefficients: {
+            VIPER_LOGI("DynSys: x_coeffs=%d,%d", val1, val2);
+            dynamic_system_.SetXCoeffs(val1, val2);
+            break;
+        }
+        case kParamDynamicSystemYCoefficients: {
+            VIPER_LOGI("DynSys: y_coeffs=%d,%d", val1, val2);
+            dynamic_system_.SetYCoeffs(val1, val2);
+            break;
+        }
+        case kParamDynamicSystemSideGain: {
+            VIPER_LOGI("DynSys: side_gain=%d,%d", val1, val2);
+            dynamic_system_.SetSideGain(
+                static_cast<float>(val1) / 100.0f, static_cast<float>(val2) / 100.0f
+            );
+            break;
+        }
+        case kParamDynamicSystemStrength: {
+            VIPER_LOGI("DynSys: strength=%d", val1);
+            dynamic_system_.SetBassGain(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+
+        // Clarity
+        case kParamClarityEnable: {
+            VIPER_LOGI("Clarity: %s", val1 ? "ON" : "OFF");
+            viper_clarity_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamClarityMode: {
+            VIPER_LOGI("Clarity: mode=%d", val1);
+            viper_clarity_.SetProcessMode(static_cast<ViPERClarity::ClarityMode>(val1));
+            break;
+        }
+        case kParamClarityGain: {
+            VIPER_LOGI("Clarity: gain=%d", val1);
+            viper_clarity_.SetClarityGain(static_cast<float>(val1) / 100.0f);
+            break;
+        }
+
+        // Cure (Crossfeed)
+        case kParamCureEnable: {
+            VIPER_LOGI("Cure: %s", val1 ? "ON" : "OFF");
+            cure_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamCureCrossfeedPreset: {
+            VIPER_LOGI("Cure: crossfeed_preset=%d", val1);
+            cure_.SetPreset(val1);
+            break;
+        }
+
+        // Tube Simulator
+        case kParamTubeSimulatorEnable: {
+            VIPER_LOGI("TubeSim: %s", val1 ? "ON" : "OFF");
+            tube_simulator_.SetEnable(val1 != 0);
+            break;
+        }
+
+        // AnalogX
+        case kParamAnalogXEnable: {
+            VIPER_LOGI("AnalogX: %s", val1 ? "ON" : "OFF");
+            analog_x_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamAnalogXMode: {
+            VIPER_LOGI("AnalogX: mode=%d", val1);
+            analog_x_.SetProcessingModel(val1);
             break;
         }
 
         // Speaker Correction
-        case PARAM_SPK_SPEAKER_CORRECTION_ENABLE: {
+        case kParamSpeakerCorrectionEnable: {
             VIPER_LOGI("SpkCorr: %s", val1 ? "ON" : "OFF");
-            this->speakerCorrection.SetEnable(val1 != 0);
+            speaker_correction_.SetEnable(val1 != 0);
+            break;
+        }
+
+        // Multiband Compressor
+        case kParamMultibandCompressorEnable: {
+            VIPER_LOGI("MBComp: %s", val1 ? "ON" : "OFF");
+            multiband_compressor_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamMultibandCompressorBandCount: {
+            VIPER_LOGI("MBComp: band_count=%d", val1);
+            multiband_compressor_.SetBandCount(val1);
+            break;
+        }
+        case kParamMultibandCompressorCrossoverFrequency: {
+            VIPER_LOGI("MBComp: crossover[%d]=%d", val1, val2);
+            multiband_compressor_.SetCrossoverFrequency(val1, static_cast<float>(val2));
+            break;
+        }
+        case kParamMultibandCompressorBandThreshold: {
+            VIPER_LOGI("MBComp: band[%d] threshold=%d", val1, val2);
+            multiband_compressor_.SetBandThreshold(
+                val1, static_cast<float>(val2) / 100.0f
+            );
+            break;
+        }
+        case kParamMultibandCompressorBandRatio: {
+            VIPER_LOGI("MBComp: band[%d] ratio=%d", val1, val2);
+            multiband_compressor_.SetBandRatio(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandKnee: {
+            VIPER_LOGI("MBComp: band[%d] knee=%d", val1, val2);
+            multiband_compressor_.SetBandKnee(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandKneeAuto: {
+            VIPER_LOGI("MBComp: band[%d] knee_auto=%d", val1, val2);
+            multiband_compressor_.SetBandKneeAuto(val1, val2 != 0);
+            break;
+        }
+        case kParamMultibandCompressorBandGain: {
+            VIPER_LOGI("MBComp: band[%d] gain=%d", val1, val2);
+            multiband_compressor_.SetBandGain(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandGainAuto: {
+            VIPER_LOGI("MBComp: band[%d] gain_auto=%d", val1, val2);
+            multiband_compressor_.SetBandGainAuto(val1, val2 != 0);
+            break;
+        }
+        case kParamMultibandCompressorBandAttack: {
+            VIPER_LOGI("MBComp: band[%d] attack=%d", val1, val2);
+            multiband_compressor_.SetBandAttack(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandAttackAuto: {
+            VIPER_LOGI("MBComp: band[%d] attack_auto=%d", val1, val2);
+            multiband_compressor_.SetBandAttackAuto(val1, val2 != 0);
+            break;
+        }
+        case kParamMultibandCompressorBandRelease: {
+            VIPER_LOGI("MBComp: band[%d] release=%d", val1, val2);
+            multiband_compressor_.SetBandRelease(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandReleaseAuto: {
+            VIPER_LOGI("MBComp: band[%d] release_auto=%d", val1, val2);
+            multiband_compressor_.SetBandReleaseAuto(val1, val2 != 0);
+            break;
+        }
+        case kParamMultibandCompressorBandKneeMulti: {
+            VIPER_LOGI("MBComp: band[%d] knee_multi=%d", val1, val2);
+            multiband_compressor_.SetBandKneeMulti(
+                val1, static_cast<float>(val2) / 100.0f
+            );
+            break;
+        }
+        case kParamMultibandCompressorBandMaxAttack: {
+            VIPER_LOGI("MBComp: band[%d] max_attack=%d", val1, val2);
+            multiband_compressor_.SetBandMaxAttack(
+                val1, static_cast<float>(val2) / 100.0f
+            );
+            break;
+        }
+        case kParamMultibandCompressorBandMaxRelease: {
+            VIPER_LOGI("MBComp: band[%d] max_release=%d", val1, val2);
+            multiband_compressor_.SetBandMaxRelease(
+                val1, static_cast<float>(val2) / 100.0f
+            );
+            break;
+        }
+        case kParamMultibandCompressorBandCrest: {
+            VIPER_LOGI("MBComp: band[%d] crest=%d", val1, val2);
+            multiband_compressor_.SetBandCrest(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandAdapt: {
+            VIPER_LOGI("MBComp: band[%d] adapt=%d", val1, val2);
+            multiband_compressor_.SetBandAdapt(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamMultibandCompressorBandNoClip: {
+            VIPER_LOGI("MBComp: band[%d] no_clip=%d", val1, val2);
+            multiband_compressor_.SetBandNoClip(val1, val2 != 0);
+            break;
+        }
+        case kParamMultibandCompressorBandEnable: {
+            VIPER_LOGI("MBComp: band[%d] enable=%d", val1, val2);
+            multiband_compressor_.SetBandEnable(val1, val2 != 0);
+            break;
+        }
+
+        // Dynamic EQ
+        case kParamDynamicEqEnable: {
+            VIPER_LOGI("DynEQ: %s", val1 ? "ON" : "OFF");
+            dynamic_eq_.SetEnable(val1 != 0);
+            break;
+        }
+        case kParamDynamicEqBandCount: {
+            VIPER_LOGI("DynEQ: band_count=%d", val1);
+            dynamic_eq_.SetBandCount(val1);
+            break;
+        }
+        case kParamDynamicEqBandFrequency: {
+            VIPER_LOGI("DynEQ: band[%d] freq=%d", val1, val2);
+            dynamic_eq_.SetBandFrequency(val1, static_cast<float>(val2));
+            break;
+        }
+        case kParamDynamicEqBandQ: {
+            VIPER_LOGI("DynEQ: band[%d] Q=%d", val1, val2);
+            dynamic_eq_.SetBandQ(val1, static_cast<float>(val2) / 100.0f);
+            break;
+        }
+        case kParamDynamicEqBandGain: {
+            VIPER_LOGI("DynEQ: band[%d] gain=%d", val1, val2);
+            dynamic_eq_.SetBandGain(val1, static_cast<float>(val2) / 10.0f);
+            break;
+        }
+        case kParamDynamicEqBandThreshold: {
+            VIPER_LOGI("DynEQ: band[%d] threshold=%d", val1, val2);
+            dynamic_eq_.SetBandThreshold(val1, static_cast<float>(val2) / 10.0f);
+            break;
+        }
+        case kParamDynamicEqBandAttack: {
+            VIPER_LOGI("DynEQ: band[%d] attack=%d", val1, val2);
+            dynamic_eq_.SetBandAttack(val1, static_cast<float>(val2));
+            break;
+        }
+        case kParamDynamicEqBandRelease: {
+            VIPER_LOGI("DynEQ: band[%d] release=%d", val1, val2);
+            dynamic_eq_.SetBandRelease(val1, static_cast<float>(val2));
+            break;
+        }
+        case kParamDynamicEqBandFilterType: {
+            VIPER_LOGI("DynEQ: band[%d] filter_type=%d", val1, val2);
+            dynamic_eq_.SetBandFilterType(val1, val2);
             break;
         }
 
@@ -1326,83 +951,459 @@ void ViPER::DispatchCommand(
     }
 }
 
-void ViPER::requestEffectsReset() {
-    this->pendingEffectsReset.store(true, std::memory_order_release);
+void ViPER::RequestEffectsReset() {
+    pending_effects_reset_.store(true, std::memory_order_release);
 }
 
-void ViPER::resetAllEffects() {
-    this->adaptiveBuffer.FlushBuffer();
+void ViPER::ResetAllEffects() {
+    adaptive_buffer_.FlushBuffer();
 
-    this->waveBuffer.Reset();
+    wave_buffer_.Reset();
 
-    this->convolver.SetSamplingRate(this->samplingRate);
-    this->convolver.Reset();
+    convolver_.SetSamplingRate(sampling_rate_);
+    convolver_.Reset();
 
-    this->vhe.SetSamplingRate(this->samplingRate);
-    this->vhe.Reset();
+    vhe_.SetSamplingRate(sampling_rate_);
+    vhe_.Reset();
 
-    this->viperDdc.SetSamplingRate(this->samplingRate);
-    this->viperDdc.Reset();
+    viper_ddc_.SetSamplingRate(sampling_rate_);
+    viper_ddc_.Reset();
 
-    this->spectrumExtend.SetSamplingRate(this->samplingRate);
-    this->spectrumExtend.Reset();
+    spectrum_extend_.SetSamplingRate(sampling_rate_);
+    spectrum_extend_.Reset();
 
-    this->iirFilter.SetSamplingRate(this->samplingRate);
-    this->iirFilter.Reset();
+    iir_filter_.SetSamplingRate(sampling_rate_);
+    iir_filter_.Reset();
 
-    this->dynamicEQ.SetSamplingRate(this->samplingRate);
-    this->dynamicEQ.Reset();
+    dynamic_eq_.SetSamplingRate(sampling_rate_);
+    dynamic_eq_.Reset();
 
-    this->colorfulMusic.SetSamplingRate(this->samplingRate);
-    this->colorfulMusic.Reset();
+    colorful_music_.SetSamplingRate(sampling_rate_);
+    colorful_music_.Reset();
 
-    this->stereoImager.SetSamplingRate(this->samplingRate);
-    this->stereoImager.Reset();
+    stereo_imager_.SetSamplingRate(sampling_rate_);
+    stereo_imager_.Reset();
 
-    this->reverberation.Reset();
+    reverberation_.Reset();
 
-    this->playbackGain.SetSamplingRate(this->samplingRate);
-    this->playbackGain.Reset();
+    playback_gain_.SetSamplingRate(sampling_rate_);
+    playback_gain_.Reset();
 
-    this->lufsTargeting.SetSamplingRate(this->samplingRate);
-    this->lufsTargeting.Reset();
+    lufs_targeting_.SetSamplingRate(sampling_rate_);
+    lufs_targeting_.Reset();
 
-    this->fetCompressor.SetSamplingRate(this->samplingRate);
-    this->fetCompressor.Reset();
+    fet_compressor_.SetSamplingRate(sampling_rate_);
+    fet_compressor_.Reset();
 
-    this->multibandCompressor.SetSamplingRate(this->samplingRate);
-    this->multibandCompressor.Reset();
+    multiband_compressor_.SetSamplingRate(sampling_rate_);
+    multiband_compressor_.Reset();
 
-    this->dynamicSystem.SetSamplingRate(this->samplingRate);
-    this->dynamicSystem.Reset();
+    dynamic_system_.SetSamplingRate(sampling_rate_);
+    dynamic_system_.Reset();
 
-    this->viperBass.SetSamplingRate(this->samplingRate);
-    this->viperBass.Reset();
+    viper_bass_.SetSamplingRate(sampling_rate_);
+    viper_bass_.Reset();
 
-    this->viperBassMono.SetSamplingRate(this->samplingRate);
-    this->viperBassMono.Reset();
+    viper_bass_mono_.SetSamplingRate(sampling_rate_);
+    viper_bass_mono_.Reset();
 
-    this->psychoacousticBass.SetSamplingRate(this->samplingRate);
-    this->psychoacousticBass.Reset();
+    psychoacoustic_bass_.SetSamplingRate(sampling_rate_);
+    psychoacoustic_bass_.Reset();
 
-    this->viperClarity.SetSamplingRate(this->samplingRate);
-    this->viperClarity.Reset();
+    viper_clarity_.SetSamplingRate(sampling_rate_);
+    viper_clarity_.Reset();
 
-    this->diffSurround.SetSamplingRate(this->samplingRate);
-    this->diffSurround.Reset();
+    diff_surround_.SetSamplingRate(sampling_rate_);
+    diff_surround_.Reset();
 
-    this->cure.SetSamplingRate(this->samplingRate);
-    this->cure.Reset();
+    cure_.SetSamplingRate(sampling_rate_);
+    cure_.Reset();
 
-    this->tubeSimulator.Reset();
+    tube_simulator_.Reset();
 
-    this->analogX.SetSamplingRate(this->samplingRate);
-    this->analogX.Reset();
+    analog_x_.SetSamplingRate(sampling_rate_);
+    analog_x_.Reset();
 
-    this->speakerCorrection.SetSamplingRate(this->samplingRate);
-    this->speakerCorrection.Reset();
+    speaker_correction_.SetSamplingRate(sampling_rate_);
+    speaker_correction_.Reset();
 
-    for (auto &softwareLimiter : softwareLimiters) {
-        softwareLimiter.Reset();
+    for (auto &software_limiter : software_limiters_) {
+        software_limiter.Reset();
     }
+}
+
+void ViPER::RequestBuffersReset() {
+    pending_buffers_reset_.store(true, std::memory_order_release);
+}
+
+void ViPER::ResetBuffers() {
+    adaptive_buffer_.FlushBuffer();
+    wave_buffer_.Reset();
+    reverberation_.Reset();
+}
+
+void ViPER::ApplyParams(const viper::ViPERParams &params) {
+    if (!(params.master_limiter == last_applied_.master_limiter)) {
+        ApplyMasterLimiter(params.master_limiter);
+    }
+    if (!(params.playback_gain_control == last_applied_.playback_gain_control)) {
+        ApplyPlaybackGainControl(params.playback_gain_control);
+    }
+    if (!(params.lufs == last_applied_.lufs)) {
+        ApplyLufs(params.lufs);
+    }
+    if (!(params.fet_compressor == last_applied_.fet_compressor)) {
+        ApplyFetCompressor(params.fet_compressor);
+    }
+    if (!(params.bass == last_applied_.bass)) {
+        ApplyBass(params.bass);
+    }
+    if (!(params.bass_mono == last_applied_.bass_mono)) {
+        ApplyBassMono(params.bass_mono);
+    }
+    if (!(params.psychoacoustic_bass == last_applied_.psychoacoustic_bass)) {
+        ApplyPsychoacousticBass(params.psychoacoustic_bass);
+    }
+    if (!(params.spectrum_extension == last_applied_.spectrum_extension)) {
+        ApplySpectrumExtension(params.spectrum_extension);
+    }
+    if (!(params.equalizer == last_applied_.equalizer)) {
+        ApplyEqualizer(params.equalizer);
+    }
+    if (!(params.convolver == last_applied_.convolver)) {
+        ApplyConvolver(params.convolver);
+    }
+    if (!(params.ddc == last_applied_.ddc)) {
+        ApplyDdc(params.ddc);
+    }
+    if (!(params.field_surround == last_applied_.field_surround)) {
+        ApplyFieldSurround(params.field_surround);
+    }
+    if (!(params.diff_surround == last_applied_.diff_surround)) {
+        ApplyDiffSurround(params.diff_surround);
+    }
+    if (!(params.stereo_imager == last_applied_.stereo_imager)) {
+        ApplyStereoImager(params.stereo_imager);
+    }
+    if (!(params.headphone_surround == last_applied_.headphone_surround)) {
+        ApplyHeadphoneSurround(params.headphone_surround);
+    }
+    if (!(params.reverb == last_applied_.reverb)) {
+        ApplyReverb(params.reverb);
+    }
+    if (!(params.dynamic_system == last_applied_.dynamic_system)) {
+        ApplyDynamicSystem(params.dynamic_system);
+    }
+    if (!(params.clarity == last_applied_.clarity)) {
+        ApplyClarity(params.clarity);
+    }
+    if (!(params.cure == last_applied_.cure)) {
+        ApplyCure(params.cure);
+    }
+    if (!(params.tube_simulator == last_applied_.tube_simulator)) {
+        ApplyTubeSimulator(params.tube_simulator);
+    }
+    if (!(params.analog_x == last_applied_.analog_x)) {
+        ApplyAnalogX(params.analog_x);
+    }
+    if (!(params.speaker_correction == last_applied_.speaker_correction)) {
+        ApplySpeakerCorrection(params.speaker_correction);
+    }
+    if (!(params.multiband_compressor == last_applied_.multiband_compressor)) {
+        ApplyMultibandCompressor(params.multiband_compressor);
+    }
+    if (!(params.dynamic_eq == last_applied_.dynamic_eq)) {
+        ApplyDynamicEq(params.dynamic_eq);
+    }
+}
+
+void ViPER::ApplyMasterLimiter(const viper::MasterLimiterParams &p) {
+    software_limiters_[0].SetGate(p.threshold);
+    software_limiters_[1].SetGate(p.threshold);
+    frame_scale_ = p.output_volume;
+    if (p.channel_pan < 0.0f) {
+        left_pan_ = 1.0f;
+        right_pan_ = 1.0f + p.channel_pan;
+    } else {
+        left_pan_ = 1.0f - p.channel_pan;
+        right_pan_ = 1.0f;
+    }
+    last_applied_.master_limiter = p;
+}
+
+void ViPER::ApplyPlaybackGainControl(const viper::PlaybackGainControlParams &p) {
+    playback_gain_.SetEnable(p.enable);
+    playback_gain_.SetRatio(p.strength);
+    playback_gain_.SetMaxGainFactor(p.max_gain);
+    playback_gain_.SetVolume(p.output_threshold);
+    last_applied_.playback_gain_control = p;
+}
+
+void ViPER::ApplyLufs(const viper::LufsParams &p) {
+    lufs_targeting_.SetEnable(p.enable);
+    lufs_targeting_.SetTargetLUFS(p.target);
+    lufs_targeting_.SetMaxGain(p.max_gain);
+    lufs_targeting_.SetSpeed(p.speed);
+    last_applied_.lufs = p;
+}
+
+void ViPER::ApplyFetCompressor(const viper::FetCompressorParams &p) {
+    fet_compressor_.SetEnable(p.enable);
+    fet_compressor_.SetThreshold(p.threshold);
+    fet_compressor_.SetRatio(p.ratio);
+    fet_compressor_.SetKnee(p.knee);
+    fet_compressor_.SetKneeAuto(p.knee_auto);
+    fet_compressor_.SetGain(p.gain);
+    fet_compressor_.SetGainAuto(p.gain_auto);
+    fet_compressor_.SetAttack(p.attack);
+    fet_compressor_.SetAttackAuto(p.attack_auto);
+    fet_compressor_.SetRelease(p.release);
+    fet_compressor_.SetReleaseAuto(p.release_auto);
+    fet_compressor_.SetKneeMulti(p.knee_multi);
+    fet_compressor_.SetMaxAttack(p.max_attack);
+    fet_compressor_.SetMaxRelease(p.max_release);
+    fet_compressor_.SetCrest(p.crest);
+    fet_compressor_.SetAdapt(p.adapt);
+    fet_compressor_.SetNoClip(p.no_clip);
+    last_applied_.fet_compressor = p;
+}
+
+void ViPER::ApplyBass(const viper::BassParams &p) {
+    viper_bass_.SetEnable(p.enable);
+    viper_bass_.SetProcessMode(static_cast<ViPERBass::ProcessMode>(p.mode));
+    viper_bass_.SetFrequency(p.frequency);
+    viper_bass_.SetBassFactor(p.gain);
+    viper_bass_.SetAntiPop(p.anti_pop);
+    last_applied_.bass = p;
+}
+
+void ViPER::ApplyBassMono(const viper::BassMonoParams &p) {
+    viper_bass_mono_.SetEnable(p.enable);
+    viper_bass_mono_.SetProcessMode(static_cast<ViPERBassMono::ProcessMode>(p.mode));
+    viper_bass_mono_.SetFrequency(p.frequency);
+    viper_bass_mono_.SetBassFactor(p.gain);
+    viper_bass_mono_.SetAntiPop(p.anti_pop);
+    last_applied_.bass_mono = p;
+}
+
+void ViPER::ApplyPsychoacousticBass(const viper::PsychoacousticBassParams &p) {
+    psychoacoustic_bass_.SetEnable(p.enable);
+    psychoacoustic_bass_.SetCutoff(p.cutoff);
+    psychoacoustic_bass_.SetIntensity(p.intensity);
+    psychoacoustic_bass_.SetHarmonicOrder(p.harmonic_order);
+    psychoacoustic_bass_.SetOriginalBassLevel(p.original_level);
+    last_applied_.psychoacoustic_bass = p;
+}
+
+void ViPER::ApplySpectrumExtension(const viper::SpectrumExtensionParams &p) {
+    spectrum_extend_.SetEnable(p.enable);
+    spectrum_extend_.SetReferenceFrequency(p.strength);
+    spectrum_extend_.SetExciter(p.exciter);
+    last_applied_.spectrum_extension = p;
+}
+
+void ViPER::ApplyEqualizer(const viper::EqualizerParams &p) {
+    iir_filter_.SetEnable(p.enable);
+    iir_filter_.SetBandCount(p.band_count);
+    for (uint32_t i = 0; i < p.band_count && i < p.band_levels.size(); i++) {
+        iir_filter_.SetBandLevel(i, p.band_levels[i]);
+    }
+    last_applied_.equalizer = p;
+}
+
+void ViPER::ApplyConvolver(const viper::ConvolverParams &p) {
+    convolver_.SetEnable(p.enable);
+    convolver_.SetCrossChannel(p.cross_channel);
+    last_applied_.convolver = p;
+}
+
+void ViPER::ApplyDdc(const viper::DdcParams &p) {
+    viper_ddc_.SetEnable(p.enable);
+    last_applied_.ddc = p;
+}
+
+void ViPER::ApplyFieldSurround(const viper::FieldSurroundParams &p) {
+    colorful_music_.SetEnable(p.enable);
+    colorful_music_.SetWidenValue(p.widening);
+    colorful_music_.SetMidImageValue(p.mid_image);
+    colorful_music_.SetDepthValue(p.depth);
+    last_applied_.field_surround = p;
+}
+
+void ViPER::ApplyDiffSurround(const viper::DiffSurroundParams &p) {
+    diff_surround_.SetEnable(p.enable);
+    diff_surround_.SetDelayTime(p.delay);
+    diff_surround_.SetReverse(p.reverse);
+    diff_surround_.SetWetDryMix(p.wet_dry_mix);
+    diff_surround_.SetLPCutoff(p.lp_cutoff);
+    last_applied_.diff_surround = p;
+}
+
+void ViPER::ApplyStereoImager(const viper::StereoImagerParams &p) {
+    stereo_imager_.SetEnable(p.enable);
+    stereo_imager_.SetLowWidth(p.low_width);
+    stereo_imager_.SetMidWidth(p.mid_width);
+    stereo_imager_.SetHighWidth(p.high_width);
+    stereo_imager_.SetLowCrossover(p.low_crossover);
+    stereo_imager_.SetHighCrossover(p.high_crossover);
+    last_applied_.stereo_imager = p;
+}
+
+void ViPER::ApplyHeadphoneSurround(const viper::HeadphoneSurroundParams &p) {
+    vhe_.SetEnable(p.enable);
+    vhe_.SetEffectLevel(p.quality);
+    last_applied_.headphone_surround = p;
+}
+
+void ViPER::ApplyReverb(const viper::ReverbParams &p) {
+    reverberation_.SetEnable(p.enable);
+    reverberation_.SetRoomSize(p.room_size);
+    reverberation_.SetWidth(p.width);
+    reverberation_.SetDamp(p.damp);
+    reverberation_.SetWet(p.wet);
+    reverberation_.SetDry(p.dry);
+    last_applied_.reverb = p;
+}
+
+void ViPER::ApplyDynamicSystem(const viper::DynamicSystemParams &p) {
+    dynamic_system_.SetEnable(p.enable);
+    dynamic_system_.SetXCoeffs(p.x_coeff_low, p.x_coeff_high);
+    dynamic_system_.SetYCoeffs(p.y_coeff_low, p.y_coeff_high);
+    dynamic_system_.SetSideGain(p.side_gain_low, p.side_gain_high);
+    dynamic_system_.SetBassGain(p.strength);
+    last_applied_.dynamic_system = p;
+}
+
+void ViPER::ApplyClarity(const viper::ClarityParams &p) {
+    viper_clarity_.SetEnable(p.enable);
+    viper_clarity_.SetProcessMode(static_cast<ViPERClarity::ClarityMode>(p.mode));
+    viper_clarity_.SetClarityGain(p.gain);
+    last_applied_.clarity = p;
+}
+
+void ViPER::ApplyCure(const viper::CureParams &p) {
+    cure_.SetEnable(p.enable);
+    cure_.SetPreset(p.crossfeed_preset);
+    last_applied_.cure = p;
+}
+
+void ViPER::ApplyTubeSimulator(const viper::TubeSimulatorParams &p) {
+    tube_simulator_.SetEnable(p.enable);
+    last_applied_.tube_simulator = p;
+}
+
+void ViPER::ApplyAnalogX(const viper::AnalogXParams &p) {
+    analog_x_.SetEnable(p.enable);
+    analog_x_.SetProcessingModel(p.mode);
+    last_applied_.analog_x = p;
+}
+
+void ViPER::ApplySpeakerCorrection(const viper::SpeakerCorrectionParams &p) {
+    speaker_correction_.SetEnable(p.enable);
+    last_applied_.speaker_correction = p;
+}
+
+void ViPER::ApplyMultibandCompressor(const viper::MultibandCompressorParams &p) {
+    multiband_compressor_.SetEnable(p.enable);
+    multiband_compressor_.SetBandCount(p.band_count);
+    for (uint32_t i = 0; i < p.band_count && i < p.crossover_frequencies.size(); i++) {
+        multiband_compressor_.SetCrossoverFrequency(i, p.crossover_frequencies[i]);
+    }
+    for (uint32_t i = 0; i < p.band_count && i < p.bands.size(); i++) {
+        const auto &b = p.bands[i];
+        multiband_compressor_.SetBandEnable(i, b.enable);
+        multiband_compressor_.SetBandThreshold(i, b.threshold);
+        multiband_compressor_.SetBandRatio(i, b.ratio);
+        multiband_compressor_.SetBandKnee(i, b.knee);
+        multiband_compressor_.SetBandKneeAuto(i, b.knee_auto);
+        multiband_compressor_.SetBandGain(i, b.gain);
+        multiband_compressor_.SetBandGainAuto(i, b.gain_auto);
+        multiband_compressor_.SetBandAttack(i, b.attack);
+        multiband_compressor_.SetBandAttackAuto(i, b.attack_auto);
+        multiband_compressor_.SetBandRelease(i, b.release);
+        multiband_compressor_.SetBandReleaseAuto(i, b.release_auto);
+        multiband_compressor_.SetBandKneeMulti(i, b.knee_multi);
+        multiband_compressor_.SetBandMaxAttack(i, b.max_attack);
+        multiband_compressor_.SetBandMaxRelease(i, b.max_release);
+        multiband_compressor_.SetBandCrest(i, b.crest);
+        multiband_compressor_.SetBandAdapt(i, b.adapt);
+        multiband_compressor_.SetBandNoClip(i, b.no_clip);
+    }
+    last_applied_.multiband_compressor = p;
+}
+
+void ViPER::ApplyDynamicEq(const viper::DynamicEqParams &p) {
+    dynamic_eq_.SetEnable(p.enable);
+    dynamic_eq_.SetBandCount(p.band_count);
+    for (uint32_t i = 0; i < p.band_count && i < p.bands.size(); i++) {
+        const auto &b = p.bands[i];
+        dynamic_eq_.SetBandFrequency(i, b.frequency);
+        dynamic_eq_.SetBandQ(i, b.q);
+        dynamic_eq_.SetBandGain(i, b.gain);
+        dynamic_eq_.SetBandThreshold(i, b.threshold);
+        dynamic_eq_.SetBandAttack(i, b.attack);
+        dynamic_eq_.SetBandRelease(i, b.release);
+        dynamic_eq_.SetBandFilterType(i, b.filter_type);
+    }
+    last_applied_.dynamic_eq = p;
+}
+
+std::optional<uint32_t> ViPER::LoadConvolverKernel(
+    const float *samples,
+    const uint32_t frame_count,
+    const uint32_t channels,
+    uint32_t kernel_id
+) {
+    if (samples == nullptr) return std::nullopt;
+    if (channels < 1 || channels > 2) return std::nullopt;
+    if (frame_count < 16) return std::nullopt;
+
+    const uint32_t total_floats = frame_count * channels;
+    if (total_floats == 0) return std::nullopt;
+
+    convolver_.PrepareKernelBuffer(total_floats, channels, false);
+
+    uint32_t written = 0;
+    while (written < total_floats) {
+        const uint32_t remaining = total_floats - written;
+        const uint32_t chunk =
+            remaining < kKernelChunkFloats ? remaining : kKernelChunkFloats;
+        convolver_.SetKernelBuffer(samples + written, chunk);
+        written += chunk;
+    }
+
+    const uint32_t crc =
+        Crc32(reinterpret_cast<const uint8_t *>(samples), total_floats * sizeof(float));
+
+    convolver_.CommitKernelBuffer(total_floats, crc, kernel_id);
+
+    if (convolver_.GetKernelID() != kernel_id) {
+        return std::nullopt;
+    }
+    return kernel_id;
+}
+
+void ViPER::UnloadConvolverKernel() {
+    convolver_.PrepareKernelBuffer(0, 0, true);
+}
+
+void ViPER::LoadDdcCoefficients(
+    const viper::BiquadSection *sections44100,
+    const viper::BiquadSection *sections48000,
+    const uint32_t section_count
+) {
+    if (section_count == 0) {
+        viper_ddc_.SetCoeffs(0, nullptr, nullptr);
+    }
+
+    static_assert(
+        sizeof(viper::BiquadSection) == 5 * sizeof(float),
+        "BiquadSection must be tightly packed for reinterpret_cast"
+    );
+    const uint32_t total_floats = section_count * 5;
+    viper_ddc_.SetCoeffs(
+        total_floats,
+        reinterpret_cast<const float *>(sections44100),
+        reinterpret_cast<const float *>(sections48000)
+    );
 }

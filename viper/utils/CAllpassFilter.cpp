@@ -1,37 +1,36 @@
-#include "CAllpassFilter.h"
+#include "CAllPassFilter.h"
 #include <cstring>
 
-CAllpassFilter::CAllpassFilter() {
-    this->buffer = nullptr;
-    this->feedback = 0.0;
-    this->bufferIndex = 0;
-    this->bufferSize = 0;
-}
+CAllPassFilter::CAllPassFilter() :
+    buffer_size_(0),
+    buffer_index_(0),
+    feedback_(0.0f),
+    buffer_(nullptr) {}
 
-float CAllpassFilter::GetFeedback() {
-    return this->feedback;
-}
-
-void CAllpassFilter::Mute() {
-    memset(this->buffer, 0, this->bufferSize * sizeof(float));
-}
-
-float CAllpassFilter::Process(float sample) {
-    float outSample = this->buffer[this->bufferIndex];
-    this->buffer[this->bufferIndex] = sample + outSample * this->feedback;
-    this->bufferIndex++;
-    if (this->bufferIndex >= this->bufferSize) {
-        this->bufferIndex = 0;
+float CAllPassFilter::Process(const float sample) {
+    const float out = buffer_[buffer_index_];
+    buffer_[buffer_index_] = sample + out * feedback_;
+    buffer_index_++;
+    if (buffer_index_ >= buffer_size_) {
+        buffer_index_ = 0;
     }
-    return outSample - sample;
+    return out - sample;
 }
 
-void CAllpassFilter::SetBuffer(float *buffer, uint32_t size) {
-    this->buffer = buffer;
-    this->bufferSize = size;
-    this->bufferIndex = 0;
+void CAllPassFilter::Mute() const {
+    memset(buffer_, 0, buffer_size_ * sizeof(float));
 }
 
-void CAllpassFilter::SetFeedback(float feedback) {
-    this->feedback = feedback;
+void CAllPassFilter::SetBuffer(float *buffer, const uint32_t size) {
+    buffer_ = buffer;
+    buffer_size_ = size;
+    buffer_index_ = 0;
+}
+
+void CAllPassFilter::SetFeedback(const float value) {
+    feedback_ = value;
+}
+
+float CAllPassFilter::GetFeedback() const {
+    return feedback_;
 }

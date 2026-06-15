@@ -2,324 +2,274 @@
 #include "../constants.h"
 #include <cmath>
 
-static const float DEFAULT_FETCOMP_PARAMETERS[] = {
-    1.000000,
-    0.000000,
-    0.000000,
-    0.000000,
-    1.000000,
-    0.000000,
-    1.000000,
-    0.514679,
-    1.000000,
-    0.384311,
-    1.000000,
-    0.500000,
-    0.879450,
-    0.884311,
-    0.615689,
-    0.660964,
-    1.000000
-};
-
-static double calculate_exp_something(double param_1, double param_2) {
-    return 1.0 - exp(-1.0 / (param_2 * param_1));
+static float calculate_exp_something(const uint32_t sampling_rate, const float time) {
+    return 1.0f - exp(-1.0f / (time * static_cast<float>(sampling_rate)));
 }
 
-static double calculate_time_coeff(
-    double samplingRate, double value, double scale, double offset
+static float calculate_time_coeff(
+    const uint32_t sampling_rate, const float value, const float scale, const float offset
 ) {
-    double time = exp(value * scale + offset);
-    return time <= 0.0 ? 1.0 : calculate_exp_something(samplingRate, time);
+    const float time = exp(value * scale + offset);
+    return time <= 0.0 ? 1.0 : calculate_exp_something(sampling_rate, time);
 }
 
-FETCompressor::FETCompressor() {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-
-    for (uint32_t i = 0; i < 17; i++) {
-        SetParameter(
-            (FETCompressor::Parameter) i,
-            GetParameterDefault((FETCompressor::Parameter) i)
-        );
-    }
-
+FETCompressor::FETCompressor() :
+    enable_(true),
+    auto_knee_(true),
+    auto_gain_(true),
+    auto_attack_(true),
+    auto_release_(true),
+    no_clip_(true),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    attack_raw_(0.514679f),
+    release_raw_(0.384311f),
+    crest_raw_(0.615689f),
+    adapt_raw_(0.660964f) {
+    SetThreshold(0.0f);
+    SetRatio(0.0f);
+    SetKnee(0.0f);
+    SetGain(0.0f);
+    SetAttack(attack_raw_);
+    SetRelease(release_raw_);
+    SetKneeMulti(0.5f);
+    SetMaxAttack(0.879450f);
+    SetMaxRelease(0.884311f);
+    SetCrest(crest_raw_);
+    SetAdapt(adapt_raw_);
     Reset();
 }
 
-float FETCompressor::GetMeter(int param_1) {
-    if (param_1 != 0) {
-        return 0.0;
-    }
-
-    if (this->enable) {
-        float tmp = (6.907755 - this->attackSmoothGR) / 6.907755;
-        if (tmp < 1.0) {
-            if (tmp < 0.0) {
-                tmp = 0.0;
-            }
-            return tmp;
-        }
-    }
-
-    return 1.0;
-}
-
-float FETCompressor::GetParameter(FETCompressor::Parameter parameter) {
-    return this->parameters[parameter];
-}
-
-float FETCompressor::GetParameterDefault(FETCompressor::Parameter parameter) {
-    if (parameter < 17) {
-        return DEFAULT_FETCOMP_PARAMETERS[parameter];
-    }
-    return 0.0;
-}
-
-void FETCompressor::Process(float *samples, uint32_t size) {
-    if (!this->enable || size == 0) return;
+void FETCompressor::Process(float *samples, const uint32_t size) {
+    if (!enable_ || size == 0) return;
 
     for (uint32_t i = 0; i < size * 2; i += 2) {
-        double inL = abs(samples[i]);
-        double inR = abs(samples[i + 1]);
-        double in = std::fmax(inL, inR);
+        const double in_l = abs(samples[i]);
+        const double in_r = abs(samples[i + 1]);
+        const double in = std::fmax(in_l, in_r);
 
-        double out = ProcessSidechain(in);
-        if (this->enable) {
-            samples[i] *= (float) out;
-            samples[i + 1] *= (float) out;
-        }
+        const double out = ProcessSidechain(in);
+        samples[i] *= static_cast<float>(out);
+        samples[i + 1] *= static_cast<float>(out);
 
-        this->smoothedThreshold =
-            this->smoothedThreshold
-            + (this->threshold - this->smoothedThreshold) * this->smoothingCoeff;
-        this->smoothedGain =
-            this->smoothedGain + this->smoothingCoeff * (this->gain - this->smoothedGain);
+        smoothed_threshold_ =
+            smoothed_threshold_ + (threshold_ - smoothed_threshold_) * smoothing_coeff_;
+        smoothed_gain_ = smoothed_gain_ + smoothing_coeff_ * (gain_ - smoothed_gain_);
     }
 }
 
-double FETCompressor::ProcessSidechain(double in) {
+void FETCompressor::Reset() {
+    smoothing_coeff_ = calculate_exp_something(sampling_rate_, 0.05);
+    smoothed_threshold_ = threshold_;
+    smoothed_gain_ = gain_;
+    running_peak_ = 0.000001f;
+    running_rms_ = 0.000001f;
+    release_smooth_gr_ = 0.0f;
+    attack_smooth_gr_ = 0.0f;
+    adaptive_gain_state_ = 0.0f;
+}
+
+void FETCompressor::SetEnable(const bool enable) {
+    enable_ = enable;
+}
+
+void FETCompressor::SetThreshold(const float value) {
+    threshold_ = log(pow(10.0f, value * -60.0f / 20.0f));
+}
+
+void FETCompressor::SetRatio(const float value) {
+    ratio_ = -value;
+}
+
+void FETCompressor::SetKnee(const float value) {
+    knee_ = log(pow(10.0f, value * 60.0f / 20.0f));
+}
+
+void FETCompressor::SetKneeAuto(const bool enable) {
+    auto_knee_ = enable;
+}
+
+void FETCompressor::SetGain(const float value) {
+    gain_ = log(pow(10.0f, value * 60.0f / 20.0f));
+}
+
+void FETCompressor::SetGainAuto(const bool enable) {
+    auto_gain_ = enable;
+}
+
+void FETCompressor::SetAttack(const float value) {
+    attack_raw_ = value;
+    attack1_ = exp(value * 7.600903f - 9.21034f);
+    attack2_ = calculate_time_coeff(sampling_rate_, value, 7.600903f, -9.21034f);
+}
+
+void FETCompressor::SetAttackAuto(const bool enable) {
+    auto_attack_ = enable;
+}
+
+void FETCompressor::SetRelease(const float value) {
+    release_raw_ = value;
+    release1_ = exp(value * 5.991465f - 5.298317f);
+    release2_ = calculate_time_coeff(sampling_rate_, value, 5.991465f, -5.298317f);
+}
+
+void FETCompressor::SetReleaseAuto(const bool enable) {
+    auto_release_ = enable;
+}
+
+void FETCompressor::SetKneeMulti(const float value) {
+    knee_multi_ = value * 4.0f;
+}
+
+void FETCompressor::SetMaxAttack(const float value) {
+    max_attack_ = exp(value * 7.600903f - 9.21034f);
+}
+
+void FETCompressor::SetMaxRelease(const float value) {
+    max_release_ = exp(value * 5.991465f - 5.298317f);
+}
+
+void FETCompressor::SetCrest(const float value) {
+    crest_raw_ = value;
+    crest1_ = exp(value * 5.991465f - 5.298317f);
+    crest2_ = calculate_time_coeff(sampling_rate_, value, 5.991465f, -5.298317f);
+}
+
+void FETCompressor::SetAdapt(const float value) {
+    adapt_raw_ = value;
+    adapt1_ = exp(value * 1.386294f);
+    adapt2_ = calculate_time_coeff(sampling_rate_, value, 1.386294f, 0.0f);
+}
+
+void FETCompressor::SetNoClip(const bool enable) {
+    no_clip_ = enable;
+}
+
+void FETCompressor::SetSamplingRate(const uint32_t sampling_rate) {
+    sampling_rate_ = sampling_rate;
+    SetAttack(attack_raw_);
+    SetRelease(release_raw_);
+    SetCrest(crest_raw_);
+    SetAdapt(adapt_raw_);
+    Reset();
+}
+
+double FETCompressor::ProcessSidechain(const double in) {
     double in2 = in * in;
     if (in2 < 0.000001) {
         in2 = 0.000001;
     }
 
-    float attackCoeff = this->attack2;
-    float releaseCoeff = this->release2;
-    float adaptiveAttackTime = this->attack1;
+    float attack_coeff = attack2_;
+    float release_coeff = release2_;
+    float adaptive_attack_time = attack1_;
 
-    float runningPeak =
-        this->runningPeak + this->crest2 * ((float) in2 - this->runningPeak);
-    float runningRMS = this->runningRMS + this->crest2 * ((float) in2 - this->runningRMS);
+    const float running_peak =
+        running_peak_ + crest2_ * (static_cast<float>(in2) - running_peak_);
+    const float running_rms =
+        running_rms_ + crest2_ * (static_cast<float>(in2) - running_rms_);
 
-    if ((float) in2 < runningPeak) {
-        in2 = runningPeak;
+    if (static_cast<float>(in2) < running_peak) {
+        in2 = running_peak;
     }
 
-    this->runningRMS = runningRMS;
-    this->runningPeak = (float) in2;
+    running_rms_ = running_rms;
+    running_peak_ = static_cast<float>(in2);
 
-    float crestRatio = (float) in2 / runningRMS;
+    const float crest_ratio = static_cast<float>(in2) / running_rms;
 
-    if (this->autoAttack) {
-        adaptiveAttackTime = 2.0f * this->maxAttack / crestRatio;
-        if (adaptiveAttackTime <= 0.0f) {
-            attackCoeff = 1.0f;
+    if (auto_attack_) {
+        adaptive_attack_time = 2.0f * max_attack_ / crest_ratio;
+        if (adaptive_attack_time <= 0.0f) {
+            attack_coeff = 1.0f;
         } else {
-            attackCoeff =
-                (float) calculate_exp_something(this->samplingRate, adaptiveAttackTime);
+            attack_coeff = calculate_exp_something(sampling_rate_, adaptive_attack_time);
         }
     }
 
-    if (this->autoRelease) {
-        float adaptiveReleaseTime =
-            2.0f * this->maxRelease / crestRatio - adaptiveAttackTime;
-        if (adaptiveReleaseTime <= 0.0f) {
-            releaseCoeff = 1.0f;
+    if (auto_release_) {
+        const float adaptive_release_time =
+            2.0f * max_release_ / crest_ratio - adaptive_attack_time;
+        if (adaptive_release_time <= 0.0f) {
+            release_coeff = 1.0f;
         } else {
-            releaseCoeff =
-                (float) calculate_exp_something(this->samplingRate, adaptiveReleaseTime);
+            release_coeff =
+                calculate_exp_something(sampling_rate_, adaptive_release_time);
         }
     }
 
-    float logInput = logf(in >= 0.000001f ? (float) in : 0.000001f);
+    const float log_input = logf(in >= 0.000001f ? static_cast<float>(in) : 0.000001f);
 
-    float diff = logInput - this->smoothedThreshold;
-    float ratioMul;
-    float halfThreshGR;
-    float halfKnee;
-    float kneeWidth;
+    const float diff = log_input - smoothed_threshold_;
+    float ratio_mul;
+    float half_thresh_gr;
+    float half_knee;
+    float knee_width;
 
-    if (!this->autoKnee) {
-        float negRatio = -this->ratio;
-        kneeWidth = this->knee;
-        halfThreshGR = this->smoothedThreshold * negRatio * 0.5f;
-        halfKnee = kneeWidth * 0.5f;
-        ratioMul = negRatio;
+    if (!auto_knee_) {
+        const float neg_ratio = -ratio_;
+        knee_width = knee_;
+        half_thresh_gr = smoothed_threshold_ * neg_ratio * 0.5f;
+        half_knee = knee_width * 0.5f;
+        ratio_mul = neg_ratio;
     } else {
-        halfThreshGR = this->smoothedThreshold * 0.5f;
-        float kneeBase = this->adaptiveGainState + halfThreshGR;
-        kneeWidth = -(kneeBase * this->kneeMulti);
-        if (kneeWidth <= 0.0f) {
-            ratioMul = 1.0f;
-            halfKnee = 0.0f;
-            kneeWidth = 0.0f;
+        half_thresh_gr = smoothed_threshold_ * 0.5f;
+        const float knee_base = adaptive_gain_state_ + half_thresh_gr;
+        knee_width = -(knee_base * knee_multi_);
+        if (knee_width <= 0.0f) {
+            ratio_mul = 1.0f;
+            half_knee = 0.0f;
+            knee_width = 0.0f;
         } else {
-            ratioMul = 1.0f;
-            halfKnee = kneeWidth * 0.5f;
+            ratio_mul = 1.0f;
+            half_knee = knee_width * 0.5f;
         }
     }
 
-    float gainReduction;
-    if (diff >= halfKnee) {
-        gainReduction = diff;
-    } else if (diff <= -(kneeWidth * 0.5f)) {
-        gainReduction = 0.0f;
+    float gain_reduction;
+    if (diff >= half_knee) {
+        gain_reduction = diff;
+    } else if (diff <= -(knee_width * 0.5f)) {
+        gain_reduction = 0.0f;
     } else {
-        float doubled = kneeWidth * 2.0f;
-        float shifted = diff + halfKnee;
-        gainReduction = (shifted * shifted) / doubled;
+        const float doubled = knee_width * 2.0f;
+        const float shifted = diff + half_knee;
+        gain_reduction = shifted * shifted / doubled;
     }
 
-    gainReduction *= ratioMul;
+    gain_reduction *= ratio_mul;
 
-    float relSmoothed =
-        this->releaseSmoothGR + (gainReduction - this->releaseSmoothGR) * releaseCoeff;
-    if (gainReduction <= relSmoothed) {
-        gainReduction = relSmoothed;
+    const float rel_smoothed =
+        release_smooth_gr_ + (gain_reduction - release_smooth_gr_) * release_coeff;
+    if (gain_reduction <= rel_smoothed) {
+        gain_reduction = rel_smoothed;
     }
 
-    float atkDiff = gainReduction - this->attackSmoothGR;
-    this->releaseSmoothGR = gainReduction;
-    float smoothedGR = this->attackSmoothGR + atkDiff * attackCoeff;
+    const float atk_diff = gain_reduction - attack_smooth_gr_;
+    release_smooth_gr_ = gain_reduction;
+    const float smoothed_gr = attack_smooth_gr_ + atk_diff * attack_coeff;
 
-    float negSmoothedGR = -smoothedGR;
-    float adaptTarget = negSmoothedGR - halfThreshGR - this->adaptiveGainState;
-    this->attackSmoothGR = smoothedGR;
+    const float neg_smoothed_gr = -smoothed_gr;
+    const float adapt_target = neg_smoothed_gr - half_thresh_gr - adaptive_gain_state_;
+    attack_smooth_gr_ = smoothed_gr;
 
-    this->adaptiveGainState = this->adaptiveGainState + adaptTarget * this->adapt2;
+    adaptive_gain_state_ = adaptive_gain_state_ + adapt_target * adapt2_;
 
-    if (this->autoGain) {
-        if (!this->noClip) {
-            float makeupGain = this->adaptiveGainState + halfThreshGR;
-            return exp(negSmoothedGR - makeupGain);
+    if (auto_gain_) {
+        if (!no_clip_) {
+            const float makeup_gain = adaptive_gain_state_ + half_thresh_gr;
+            return exp(neg_smoothed_gr - makeup_gain);
         } else {
-            float outputLevel = logInput - smoothedGR;
-            float makeupGain = halfThreshGR + this->adaptiveGainState;
-            float check = outputLevel - makeupGain;
-            if (check > 0.0011512704f) {
-                outputLevel = outputLevel - halfThreshGR;
-                outputLevel = outputLevel + 0.0011512704f;
-                makeupGain = outputLevel + halfThreshGR;
-                this->adaptiveGainState = outputLevel;
+            float output_level = log_input - smoothed_gr;
+            float makeup_gain = half_thresh_gr + adaptive_gain_state_;
+            if (output_level - makeup_gain > 0.0011512704f) {
+                output_level = output_level - half_thresh_gr;
+                output_level = output_level + 0.0011512704f;
+                makeup_gain = output_level + half_thresh_gr;
+                adaptive_gain_state_ = output_level;
             }
-            return exp(negSmoothedGR - makeupGain);
+            return exp(neg_smoothed_gr - makeup_gain);
         }
     }
 
-    return exp(this->smoothedGain - smoothedGR);
-}
-
-void FETCompressor::Reset() {
-    this->smoothingCoeff = calculate_exp_something(this->samplingRate, 0.05);
-    this->smoothedThreshold = this->threshold;
-    this->smoothedGain = this->gain;
-    this->runningPeak = 0.000001;
-    this->runningRMS = 0.000001;
-    this->releaseSmoothGR = 0.0;
-    this->attackSmoothGR = 0.0;
-    this->adaptiveGainState = 0.0;
-}
-
-void FETCompressor::SetParameter(FETCompressor::Parameter parameter, float value) {
-    this->parameters[parameter] = value;
-
-    switch (parameter) {
-        case ENABLE: {
-            this->enable = value >= 0.5;
-            break;
-        }
-        case THRESHOLD: {
-            this->threshold = log(pow(10.0, (value * -60.0) / 20.0));
-            break;
-        }
-        case RATIO: {
-            this->ratio = -value;
-            break;
-        }
-        case KNEE: {
-            this->knee = log(pow(10.0, (value * 60.0) / 20));
-            break;
-        }
-        case AUTO_KNEE: {
-            this->autoKnee = value >= 0.5;
-            break;
-        }
-        case GAIN: {
-            this->gain = log(pow(10.0, (value * 60.0) / 20.0));
-            break;
-        }
-        case AUTO_GAIN: {
-            this->autoGain = value >= 0.5;
-            break;
-        }
-        case ATTACK: {
-            this->attack1 = exp(value * 7.600903 - 9.21034);
-            this->attack2 =
-                calculate_time_coeff(this->samplingRate, value, 7.600903, -9.21034);
-            break;
-        }
-        case AUTO_ATTACK: {
-            this->autoAttack = value >= 0.5;
-            break;
-        }
-        case RELEASE: {
-            this->release1 = exp(value * 5.991465 - 5.298317);
-            this->release2 =
-                calculate_time_coeff(this->samplingRate, value, 5.991465, -5.298317);
-            break;
-        }
-        case AUTO_RELEASE: {
-            this->autoRelease = value >= 0.5;
-            break;
-        }
-        case KNEE_MULTI: {
-            this->kneeMulti = value * 4.0;
-            break;
-        }
-        case MAX_ATTACK: {
-            this->maxAttack = exp(value * 7.600903 - 9.21034);
-            break;
-        }
-        case MAX_RELEASE: {
-            this->maxRelease = exp(value * 5.991465 - 5.298317);
-            break;
-        }
-        case CREST: {
-            this->crest1 = exp(value * 5.991465 - 5.298317);
-            this->crest2 =
-                calculate_time_coeff(this->samplingRate, value, 5.991465, -5.298317);
-            break;
-        }
-        case ADAPT: {
-            this->adapt1 = exp(value * 1.386294);
-            this->adapt2 = calculate_time_coeff(this->samplingRate, value, 1.386294, 0.0);
-            break;
-        }
-        case NO_CLIP: {
-            this->noClip = value >= 0.5;
-            break;
-        }
-    }
-}
-
-void FETCompressor::SetSamplingRate(uint32_t samplingRate) {
-    this->samplingRate = samplingRate;
-
-    for (uint32_t i = 0; i < 17; i++) {
-        SetParameter(
-            (FETCompressor::Parameter) i, GetParameter((FETCompressor::Parameter) i)
-        );
-    }
-
-    Reset();
+    return exp(smoothed_gain_ - smoothed_gr);
 }

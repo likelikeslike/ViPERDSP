@@ -1,7 +1,7 @@
 #include "PsychoacousticBass.h"
 #include "../constants.h"
 
-static const float HARMONIC_ORDER_2[10] = {
+static constexpr float kHarmonicOrder2[10] = {
     0.0f,
     1.0f,
     0.0f,
@@ -14,7 +14,7 @@ static const float HARMONIC_ORDER_2[10] = {
     0.0f,
 };
 
-static const float HARMONIC_ORDER_3[10] = {
+static constexpr float kHarmonicOrder3[10] = {
     0.0f,
     0.7f,
     0.3f,
@@ -27,7 +27,7 @@ static const float HARMONIC_ORDER_3[10] = {
     0.0f,
 };
 
-static const float HARMONIC_ORDER_4[10] = {
+static constexpr float kHarmonicOrder4[10] = {
     0.0f,
     0.5f,
     0.3f,
@@ -40,7 +40,7 @@ static const float HARMONIC_ORDER_4[10] = {
     0.0f,
 };
 
-static const float HARMONIC_ORDER_5[10] = {
+static constexpr float kHarmonicOrder5[10] = {
     0.0f,
     0.4f,
     0.25f,
@@ -53,129 +53,129 @@ static const float HARMONIC_ORDER_5[10] = {
     0.0f,
 };
 
-PsychoacousticBass::PsychoacousticBass() {
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
-    this->cutoff = 80;
-    this->harmonicOrder = 3;
-    this->intensity = 0.5f;
-    this->originalBassLevel = 1.0f;
-    this->envelope = 1e-10;
-    this->enabled = false;
+PsychoacousticBass::PsychoacousticBass() :
+    enabled_(false),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
+    cutoff_(80),
+    harmonic_order_(3),
+    intensity_(0.5f),
+    original_bass_level_(1.0f),
+    envelope_(1e-10) {
     Reset();
 }
 
-void PsychoacousticBass::Process(float *samples, uint32_t size) {
-    if (!this->enabled) return;
+void PsychoacousticBass::Process(float *samples, const uint32_t size) {
+    if (!enabled_) return;
 
     for (uint32_t i = 0; i < size * 2; i += 2) {
-        double bassL = this->lowpass[0].ProcessSample(samples[i]);
-        double bassR = this->lowpass[1].ProcessSample(samples[i + 1]);
+        const double bass_l = lowpass_[0].ProcessSample(samples[i]);
+        const double bass_r = lowpass_[1].ProcessSample(samples[i + 1]);
 
-        double absL = fabs(bassL);
-        double absR = fabs(bassR);
-        double peak = (absL > absR) ? absL : absR;
-        if (peak > this->envelope) {
-            this->envelope += 0.01 * (peak - this->envelope);
+        double abs_l = fabs(bass_l);
+        double abs_r = fabs(bass_r);
+        const double peak = abs_l > abs_r ? abs_l : abs_r;
+        if (peak > envelope_) {
+            envelope_ += 0.01 * (peak - envelope_);
         } else {
-            this->envelope += 0.0001 * (peak - this->envelope);
+            envelope_ += 0.0001 * (peak - envelope_);
         }
-        if (this->envelope < 1e-10) this->envelope = 1e-10;
+        if (envelope_ < 1e-10) envelope_ = 1e-10;
 
-        double normL = bassL / this->envelope;
-        double normR = bassR / this->envelope;
-        if (normL > 1.0) normL = 1.0;
-        if (normL < -1.0) normL = -1.0;
-        if (normR > 1.0) normR = 1.0;
-        if (normR < -1.0) normR = -1.0;
+        double norm_l = bass_l / envelope_;
+        double norm_r = bass_r / envelope_;
+        if (norm_l > 1.0) norm_l = 1.0;
+        if (norm_l < -1.0) norm_l = -1.0;
+        if (norm_r > 1.0) norm_r = 1.0;
+        if (norm_r < -1.0) norm_r = -1.0;
 
-        double harmonicL = this->harmonics[0].Process(normL) * this->envelope;
-        double harmonicR = this->harmonics[1].Process(normR) * this->envelope;
+        double harmonic_l = harmonics_[0].Process(norm_l) * envelope_;
+        double harmonic_r = harmonics_[1].Process(norm_r) * envelope_;
 
-        harmonicL = this->highpass[0].ProcessSample(harmonicL);
-        harmonicR = this->highpass[1].ProcessSample(harmonicR);
+        harmonic_l = highpass_[0].ProcessSample(harmonic_l);
+        harmonic_r = highpass_[1].ProcessSample(harmonic_r);
 
-        samples[i] = samples[i] + (float) (harmonicL * this->intensity);
-        samples[i + 1] = samples[i + 1] + (float) (harmonicR * this->intensity);
+        samples[i] = samples[i] + static_cast<float>(harmonic_l * intensity_);
+        samples[i + 1] = samples[i + 1] + static_cast<float>(harmonic_r * intensity_);
 
-        if (this->originalBassLevel < 1.0f) {
-            double dryL = samples[i] - (float) bassL;
-            double dryR = samples[i + 1] - (float) bassR;
-            samples[i] = (float) (dryL + bassL * this->originalBassLevel);
-            samples[i + 1] = (float) (dryR + bassR * this->originalBassLevel);
+        if (original_bass_level_ < 1.0f) {
+            const double dry_l = samples[i] - static_cast<float>(bass_l);
+            const double dry_r = samples[i + 1] - static_cast<float>(bass_r);
+            samples[i] = static_cast<float>(dry_l + bass_l * original_bass_level_);
+            samples[i + 1] = static_cast<float>(dry_r + bass_r * original_bass_level_);
         }
     }
 }
 
 void PsychoacousticBass::Reset() {
-    this->envelope = 1e-10;
+    envelope_ = 1e-10;
     for (uint32_t ch = 0; ch < 2; ch++) {
-        this->lowpass[ch].Reset();
-        this->highpass[ch].Reset();
+        lowpass_[ch].Reset();
+        highpass_[ch].Reset();
     }
     RefreshFilters();
     ApplyHarmonicCoeffs();
 }
 
-void PsychoacousticBass::SetEnable(bool enable) {
-    if (this->enabled != enable) {
+void PsychoacousticBass::SetEnable(const bool enable) {
+    if (enabled_ != enable) {
         if (enable) {
             Reset();
         }
-        this->enabled = enable;
+        enabled_ = enable;
     }
 }
 
-void PsychoacousticBass::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
+void PsychoacousticBass::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
         Reset();
     }
 }
 
-void PsychoacousticBass::SetCutoff(uint32_t cutoff) {
-    if (cutoff < 60) cutoff = 60;
-    if (cutoff > 150) cutoff = 150;
-    if (this->cutoff != cutoff) {
-        this->cutoff = cutoff;
+void PsychoacousticBass::SetCutoff(uint32_t value) {
+    if (value < 60) value = 60;
+    if (value > 150) value = 150;
+    if (cutoff_ != value) {
+        cutoff_ = value;
         RefreshFilters();
     }
 }
 
-void PsychoacousticBass::SetIntensity(uint32_t intensity) {
-    if (intensity > 100) intensity = 100;
-    this->intensity = (float) intensity / 100.0f;
+void PsychoacousticBass::SetIntensity(uint32_t value) {
+    if (value > 100) value = 100;
+    intensity_ = static_cast<float>(value) / 100.0f;
 }
 
-void PsychoacousticBass::SetHarmonicOrder(uint32_t order) {
-    if (order < 2) order = 2;
-    if (order > 5) order = 5;
-    if (this->harmonicOrder != order) {
-        this->harmonicOrder = order;
+void PsychoacousticBass::SetHarmonicOrder(uint32_t value) {
+    if (value < 2) value = 2;
+    if (value > 5) value = 5;
+    if (harmonic_order_ != value) {
+        harmonic_order_ = value;
         ApplyHarmonicCoeffs();
     }
 }
 
-void PsychoacousticBass::SetOriginalBassLevel(uint32_t level) {
-    if (level > 100) level = 100;
-    this->originalBassLevel = (float) level / 100.0f;
+void PsychoacousticBass::SetOriginalBassLevel(uint32_t value) {
+    if (value > 100) value = 100;
+    original_bass_level_ = static_cast<float>(value) / 100.0f;
 }
 
 void PsychoacousticBass::RefreshFilters() {
     for (uint32_t ch = 0; ch < 2; ch++) {
-        this->lowpass[ch].RefreshFilter(
+        lowpass_[ch].RefreshFilter(
             MultiBiquad::FilterType::LOW_PASS,
-            0.0,
-            (float) this->cutoff,
-            this->samplingRate,
-            0.717,
+            0.0f,
+            static_cast<float>(cutoff_),
+            sampling_rate_,
+            0.717f,
             false
         );
-        this->highpass[ch].RefreshFilter(
+        highpass_[ch].RefreshFilter(
             MultiBiquad::FilterType::HIGH_PASS,
-            0.0,
-            (float) this->cutoff,
-            this->samplingRate,
-            0.717,
+            0.0f,
+            static_cast<float>(cutoff_),
+            sampling_rate_,
+            0.717f,
             false
         );
     }
@@ -183,25 +183,25 @@ void PsychoacousticBass::RefreshFilters() {
 
 void PsychoacousticBass::ApplyHarmonicCoeffs() {
     const float *coeffs;
-    switch (this->harmonicOrder) {
+    switch (harmonic_order_) {
         case 2:
-            coeffs = HARMONIC_ORDER_2;
+            coeffs = kHarmonicOrder2;
             break;
         case 3:
-            coeffs = HARMONIC_ORDER_3;
+            coeffs = kHarmonicOrder3;
             break;
         case 4:
-            coeffs = HARMONIC_ORDER_4;
+            coeffs = kHarmonicOrder4;
             break;
         case 5:
-            coeffs = HARMONIC_ORDER_5;
+            coeffs = kHarmonicOrder5;
             break;
         default:
-            coeffs = HARMONIC_ORDER_3;
+            coeffs = kHarmonicOrder3;
             break;
     }
-    this->harmonics[0].Reset();
-    this->harmonics[1].Reset();
-    this->harmonics[0].SetHarmonics(coeffs);
-    this->harmonics[1].SetHarmonics(coeffs);
+    harmonics_[0].Reset();
+    harmonics_[1].Reset();
+    harmonics_[0].SetHarmonics(coeffs);
+    harmonics_[1].SetHarmonics(coeffs);
 }

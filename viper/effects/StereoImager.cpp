@@ -1,202 +1,201 @@
 #include "StereoImager.h"
 #include "../constants.h"
 
-static constexpr float BUTTERWORTH_Q = 0.7071f;
+static constexpr float kButterworthQ = 0.7071f;
 
-StereoImager::StereoImager() {
-    this->enable = false;
-    this->samplingRate = VIPER_DEFAULT_SAMPLING_RATE;
+StereoImager::StereoImager() :
+    enable_(false),
+    sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE) {
+    band_widths_[0] = 1.0f;
+    band_widths_[1] = 1.0f;
+    band_widths_[2] = 1.0f;
 
-    this->bandWidths[0] = 1.0f;
-    this->bandWidths[1] = 1.0f;
-    this->bandWidths[2] = 1.0f;
-
-    this->crossoverFreqs[0] = 200.0f;
-    this->crossoverFreqs[1] = 4000.0f;
+    crossover_freqs_[0] = 200.0f;
+    crossover_freqs_[1] = 4000.0f;
 
     ConfigureCrossovers();
 }
 
-void StereoImager::Process(float *samples, uint32_t size) {
-    if (!this->enable) return;
+void StereoImager::Process(float *samples, const uint32_t size) {
+    if (!enable_) return;
     if (size == 0) return;
 
-    uint32_t frameCount = size * 2;
+    const uint32_t frame_count = size * 2;
 
-    for (uint32_t b = 0; b < NUM_BANDS; b++) {
-        if (this->bandBuffers[b].size() < frameCount) {
-            this->bandBuffers[b].resize(frameCount);
+    for (uint32_t b = 0; b < kNumBands; b++) {
+        if (band_buffers_[b].size() < frame_count) {
+            band_buffers_[b].resize(frame_count);
         }
     }
 
-    for (uint32_t b = 0; b < NUM_BANDS; b++) {
-        for (uint32_t i = 0; i < frameCount; i += 2) {
-            double sL = static_cast<double>(samples[i]);
-            double sR = static_cast<double>(samples[i + 1]);
+    for (uint32_t b = 0; b < kNumBands; b++) {
+        for (uint32_t i = 0; i < frame_count; i += 2) {
+            double sample_l = samples[i];
+            double sample_r = samples[i + 1];
 
             if (b == 0) {
-                sL = this->lowpassLA[0].ProcessSample(sL);
-                sL = this->lowpassLB[0].ProcessSample(sL);
-                sR = this->lowpassRA[0].ProcessSample(sR);
-                sR = this->lowpassRB[0].ProcessSample(sR);
+                sample_l = lowpass_la_[0].ProcessSample(sample_l);
+                sample_l = lowpass_lb_[0].ProcessSample(sample_l);
+                sample_r = lowpass_ra_[0].ProcessSample(sample_r);
+                sample_r = lowpass_rb_[0].ProcessSample(sample_r);
             } else if (b == 2) {
-                sL = this->highpassLA[1].ProcessSample(sL);
-                sL = this->highpassLB[1].ProcessSample(sL);
-                sR = this->highpassRA[1].ProcessSample(sR);
-                sR = this->highpassRB[1].ProcessSample(sR);
+                sample_l = highpass_la_[1].ProcessSample(sample_l);
+                sample_l = highpass_lb_[1].ProcessSample(sample_l);
+                sample_r = highpass_ra_[1].ProcessSample(sample_r);
+                sample_r = highpass_rb_[1].ProcessSample(sample_r);
             } else {
-                sL = this->highpassLA[0].ProcessSample(sL);
-                sL = this->highpassLB[0].ProcessSample(sL);
-                sL = this->lowpassLA[1].ProcessSample(sL);
-                sL = this->lowpassLB[1].ProcessSample(sL);
-                sR = this->highpassRA[0].ProcessSample(sR);
-                sR = this->highpassRB[0].ProcessSample(sR);
-                sR = this->lowpassRA[1].ProcessSample(sR);
-                sR = this->lowpassRB[1].ProcessSample(sR);
+                sample_l = highpass_la_[0].ProcessSample(sample_l);
+                sample_l = highpass_lb_[0].ProcessSample(sample_l);
+                sample_l = lowpass_la_[1].ProcessSample(sample_l);
+                sample_l = lowpass_lb_[1].ProcessSample(sample_l);
+                sample_r = highpass_ra_[0].ProcessSample(sample_r);
+                sample_r = highpass_rb_[0].ProcessSample(sample_r);
+                sample_r = lowpass_ra_[1].ProcessSample(sample_r);
+                sample_r = lowpass_rb_[1].ProcessSample(sample_r);
             }
 
-            float fL = static_cast<float>(sL);
-            float fR = static_cast<float>(sR);
+            const auto f_l = static_cast<float>(sample_l);
+            const auto f_r = static_cast<float>(sample_r);
 
-            float mid = (fL + fR) * 0.5f;
-            float side = (fL - fR) * 0.5f;
-            side *= this->bandWidths[b];
+            const float mid = (f_l + f_r) * 0.5f;
+            float side = (f_l - f_r) * 0.5f;
+            side *= band_widths_[b];
 
-            this->bandBuffers[b][i] = mid + side;
-            this->bandBuffers[b][i + 1] = mid - side;
+            band_buffers_[b][i] = mid + side;
+            band_buffers_[b][i + 1] = mid - side;
         }
     }
 
-    for (uint32_t i = 0; i < frameCount; i += 2) {
-        float sumL = 0.0f;
-        float sumR = 0.0f;
-        for (uint32_t b = 0; b < NUM_BANDS; b++) {
-            sumL += this->bandBuffers[b][i];
-            sumR += this->bandBuffers[b][i + 1];
+    for (uint32_t i = 0; i < frame_count; i += 2) {
+        float sum_l = 0.0f;
+        float sum_r = 0.0f;
+        for (uint32_t b = 0; b < kNumBands; b++) {
+            sum_l += band_buffers_[b][i];
+            sum_r += band_buffers_[b][i + 1];
         }
-        samples[i] = sumL;
-        samples[i + 1] = sumR;
+        samples[i] = sum_l;
+        samples[i + 1] = sum_r;
     }
 }
 
 void StereoImager::Reset() {
-    for (uint32_t i = 0; i < NUM_CROSSOVERS; i++) {
-        this->lowpassLA[i].Reset();
-        this->lowpassLB[i].Reset();
-        this->lowpassRA[i].Reset();
-        this->lowpassRB[i].Reset();
-        this->highpassLA[i].Reset();
-        this->highpassLB[i].Reset();
-        this->highpassRA[i].Reset();
-        this->highpassRB[i].Reset();
+    for (uint32_t i = 0; i < kNumCrossovers; i++) {
+        lowpass_la_[i].Reset();
+        lowpass_lb_[i].Reset();
+        lowpass_ra_[i].Reset();
+        lowpass_rb_[i].Reset();
+        highpass_la_[i].Reset();
+        highpass_lb_[i].Reset();
+        highpass_ra_[i].Reset();
+        highpass_rb_[i].Reset();
     }
     ConfigureCrossovers();
 }
 
-void StereoImager::SetEnable(bool enable) {
-    if (this->enable != enable) {
+void StereoImager::SetEnable(const bool enable) {
+    if (enable_ != enable) {
         if (enable) Reset();
-        this->enable = enable;
+        enable_ = enable;
     }
 }
 
-void StereoImager::SetSamplingRate(uint32_t samplingRate) {
-    if (this->samplingRate != samplingRate) {
-        this->samplingRate = samplingRate;
+void StereoImager::SetLowWidth(const float value) {
+    band_widths_[0] = value / 100.0f;
+}
+
+void StereoImager::SetMidWidth(const float value) {
+    band_widths_[1] = value / 100.0f;
+}
+
+void StereoImager::SetHighWidth(const float value) {
+    band_widths_[2] = value / 100.0f;
+}
+
+void StereoImager::SetLowCrossover(const float value) {
+    if (crossover_freqs_[0] != value) {
+        crossover_freqs_[0] = value;
         ConfigureCrossovers();
     }
 }
 
-void StereoImager::SetLowWidth(float widthPercent) {
-    this->bandWidths[0] = widthPercent / 100.0f;
-}
-
-void StereoImager::SetMidWidth(float widthPercent) {
-    this->bandWidths[1] = widthPercent / 100.0f;
-}
-
-void StereoImager::SetHighWidth(float widthPercent) {
-    this->bandWidths[2] = widthPercent / 100.0f;
-}
-
-void StereoImager::SetLowCrossover(float frequency) {
-    if (this->crossoverFreqs[0] != frequency) {
-        this->crossoverFreqs[0] = frequency;
+void StereoImager::SetHighCrossover(const float value) {
+    if (crossover_freqs_[1] != value) {
+        crossover_freqs_[1] = value;
         ConfigureCrossovers();
     }
 }
 
-void StereoImager::SetHighCrossover(float frequency) {
-    if (this->crossoverFreqs[1] != frequency) {
-        this->crossoverFreqs[1] = frequency;
+void StereoImager::SetSamplingRate(const uint32_t sampling_rate) {
+    if (sampling_rate_ != sampling_rate) {
+        sampling_rate_ = sampling_rate;
         ConfigureCrossovers();
     }
 }
 
 void StereoImager::ConfigureCrossovers() {
-    for (uint32_t i = 0; i < NUM_CROSSOVERS; i++) {
-        this->lowpassLA[i].RefreshFilter(
+    for (uint32_t i = 0; i < kNumCrossovers; i++) {
+        lowpass_la_[i].RefreshFilter(
             MultiBiquad::LOW_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->lowpassLB[i].RefreshFilter(
+        lowpass_lb_[i].RefreshFilter(
             MultiBiquad::LOW_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->lowpassRA[i].RefreshFilter(
+        lowpass_ra_[i].RefreshFilter(
             MultiBiquad::LOW_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->lowpassRB[i].RefreshFilter(
+        lowpass_rb_[i].RefreshFilter(
             MultiBiquad::LOW_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->highpassLA[i].RefreshFilter(
+        highpass_la_[i].RefreshFilter(
             MultiBiquad::HIGH_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->highpassLB[i].RefreshFilter(
+        highpass_lb_[i].RefreshFilter(
             MultiBiquad::HIGH_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->highpassRA[i].RefreshFilter(
+        highpass_ra_[i].RefreshFilter(
             MultiBiquad::HIGH_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
-        this->highpassRB[i].RefreshFilter(
+        highpass_rb_[i].RefreshFilter(
             MultiBiquad::HIGH_PASS,
             1.0f,
-            this->crossoverFreqs[i],
-            this->samplingRate,
-            BUTTERWORTH_Q,
+            crossover_freqs_[i],
+            sampling_rate_,
+            kButterworthQ,
             false
         );
     }

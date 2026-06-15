@@ -2,61 +2,59 @@
 
 #include "../utils/MultiBiquad.h"
 #include <array>
-#include <cstdint>
 
 class DynamicEQ {
 public:
-    static constexpr uint32_t MAX_BANDS = 8;
-
-    enum ParamType {
-        FREQ,
-        Q,
-        GAIN,
-        THRESHOLD,
-        ATTACK,
-        RELEASE,
-        FILTER_TYPE
-    };
+    static constexpr uint32_t kMaxBands = 8;
 
     DynamicEQ();
 
     void Process(float *samples, uint32_t size);
     void Reset();
+
     void SetEnable(bool enable);
-    void SetSamplingRate(uint32_t samplingRate);
     void SetBandCount(uint32_t count);
-    void SetBandParam(uint32_t band, int paramType, float value);
+    void SetSamplingRate(uint32_t sampling_rate);
+
+    void SetBandFrequency(uint32_t band, float value);
+    void SetBandGain(uint32_t band, float value);
+    void SetBandQ(uint32_t band, float value);
+    void SetBandThreshold(uint32_t band, float value);
+    void SetBandAttack(uint32_t band, float value);
+    void SetBandRelease(uint32_t band, float value);
+    void SetBandFilterType(uint32_t band, int value);
 
 private:
     struct BandParam {
         float frequency;
         float q;
-        float targetGainDb;
-        float thresholdDb;
-        float attackMs;
-        float releaseMs;
-        MultiBiquad::FilterType filterType;
+        float target_gain_db;
+        float threshold_db;
+        float attack_ms;
+        float release_ms;
+        MultiBiquad::FilterType filter_type;
     };
 
     struct BandState {
-        double envelopeL;
-        double envelopeR;
-        double smoothedGainDb;
-        float lastAppliedGainDb;
-        double attackCoeff;
-        double releaseCoeff;
+        double envelope_l;
+        double envelope_r;
+        double smoothed_gain_db;
+        float last_applied_gain_db;
+        double attack_coeff;
+        double release_coeff;
     };
 
+    bool enable_;
+
+    uint32_t sampling_rate_;
+    uint32_t band_count_;
+
+    std::array<BandParam, kMaxBands> params_;
+    std::array<BandState, kMaxBands> state_;
+
+    std::array<MultiBiquad, kMaxBands> apply_l_;
+    std::array<MultiBiquad, kMaxBands> apply_r_;
+
     void RecalcAttackRelease(uint32_t band);
-    void ConfigureApplicationFilter(uint32_t band, float gainDb);
-
-    bool enable;
-    uint32_t samplingRate;
-    uint32_t bandCount;
-
-    std::array<BandParam, MAX_BANDS> params;
-    std::array<BandState, MAX_BANDS> state;
-
-    std::array<MultiBiquad, MAX_BANDS> applyL;
-    std::array<MultiBiquad, MAX_BANDS> applyR;
+    void ConfigureApplicationFilter(uint32_t band, float gain_db);
 };

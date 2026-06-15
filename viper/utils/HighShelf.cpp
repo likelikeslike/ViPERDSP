@@ -1,49 +1,61 @@
 #include "HighShelf.h"
 #include <cmath>
 
-double HighShelf::Process(double sample) {
-    double out = (((this->x_1 * this->b1 + sample * this->b0 + this->b2 * this->x_2)
-                   - this->y_1 * this->a1)
-                  - this->a2 * this->y_2)
-                 * this->a0;
-    this->y_2 = this->y_1;
-    this->y_1 = out;
-    this->x_2 = this->x_1;
-    this->x_1 = sample;
+HighShelf::HighShelf() :
+    frequency_(0.0f),
+    gain_(0.0),
+    x1_(0.0),
+    x2_(0.0),
+    y1_(0.0),
+    y2_(0.0),
+    b0_(0.0),
+    b1_(0.0),
+    b2_(0.0),
+    a0_(0.0),
+    a1_(0.0),
+    a2_(0.0) {}
+
+double HighShelf::Process(const double sample) {
+    const double out =
+        (x1_ * b1_ + sample * b0_ + b2_ * x2_ - y1_ * a1_ - a2_ * y2_) * a0_;
+    y2_ = y1_;
+    y1_ = out;
+    x2_ = x1_;
+    x1_ = sample;
     return out;
 }
 
-void HighShelf::SetFrequency(float freq) {
-    this->frequency = freq;
+void HighShelf::SetFrequency(const float value) {
+    frequency_ = value;
 }
 
-void HighShelf::SetGain(float gain) {
-    this->gain = 20.0 * log10((double) gain);
+void HighShelf::SetGain(const float value) {
+    gain_ = 20.0 * log10(value);
 }
 
-void HighShelf::SetSamplingRate(uint32_t samplingRate) {
-    double x = (2 * M_PI * this->frequency) / (double) samplingRate;
-    double sinX = sin(x);
-    double cosX = cos(x);
-    double y = exp((this->gain * log(10.0)) / 40.0);
+void HighShelf::SetSamplingRate(const uint32_t sampling_rate) {
+    const double x = 2 * M_PI * frequency_ / sampling_rate;
+    const double sin_x = sin(x);
+    const double cos_x = cos(x);
+    const double y = exp(gain_ * log(10.0) / 40.0);
 
-    this->x_1 = 0.0;
-    this->x_2 = 0.0;
-    this->y_1 = 0.0;
-    this->y_2 = 0.0;
+    x1_ = 0.0;
+    x2_ = 0.0;
+    y1_ = 0.0;
+    y2_ = 0.0;
 
-    double z = sqrt(y * 2.0) * sinX;
-    double a = (y - 1.0) * cosX;
-    double b = (y + 1.0) - a;
-    double c = z + b;
-    double d = (y + 1.0) * cosX;
-    double e = (y + 1.0) + a;
-    double f = (y - 1.0) - d;
+    const double z = sqrt(y * 2.0) * sin_x;
+    const double a = (y - 1.0) * cos_x;
+    const double b = y + 1.0 - a;
+    const double c = z + b;
+    const double d = (y + 1.0) * cos_x;
+    const double e = y + 1.0 + a;
+    const double f = y - 1.0 - d;
 
-    this->a0 = 1.0 / c;
-    this->a1 = f * 2.0;
-    this->a2 = b - z;
-    this->b0 = (e + z) * y;
-    this->b1 = -y * 2.0 * ((y - 1.0) + d);
-    this->b2 = (e - z) * y;
+    a0_ = 1.0 / c;
+    a1_ = f * 2.0;
+    a2_ = b - z;
+    b0_ = (e + z) * y;
+    b1_ = -y * 2.0 * (y - 1.0 + d);
+    b2_ = (e - z) * y;
 }

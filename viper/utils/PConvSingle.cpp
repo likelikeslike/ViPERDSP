@@ -3,145 +3,136 @@
 #include <cstdlib>
 #include <cstring>
 
-PConvSingle::PConvSingle() {
-    this->instanceUsable = false;
-    this->segmentCount = 0;
-    this->segmentSize = 0;
-    this->fftSize = 0;
-    this->fftSetup = nullptr;
-    this->fftWork = nullptr;
-    this->filterSegments = nullptr;
-    this->inputHistory = nullptr;
-    this->overlapBuffer = nullptr;
-    this->fftBuffer = nullptr;
-    this->accumBuffer = nullptr;
-    this->monoBuffer = nullptr;
-    this->delayLineIndex = 0;
-}
+PConvSingle::PConvSingle() :
+    instance_usable_(false),
+    segment_count_(0),
+    segment_size_(0),
+    fft_size_(0),
+    delay_line_index_(0),
+    fft_setup_(nullptr),
+    fft_work_(nullptr),
+    filter_segments_(nullptr),
+    input_history_(nullptr),
+    overlap_buffer_(nullptr),
+    fft_buffer_(nullptr),
+    accum_buffer_(nullptr),
+    mono_buffer_(nullptr) {}
 
 PConvSingle::~PConvSingle() {
     ReleaseResources();
+}
+
+void PConvSingle::Reset() {
+    if (!instance_usable_) return;
+
+    for (int i = 0; i < segment_count_; i++) {
+        memset(input_history_[i], 0, fft_size_ * sizeof(float));
+    }
+    memset(overlap_buffer_, 0, segment_size_ * sizeof(float));
+    memset(fft_buffer_, 0, fft_size_ * sizeof(float));
+    memset(accum_buffer_, 0, fft_size_ * sizeof(float));
+    memset(mono_buffer_, 0, segment_size_ * sizeof(float));
+    memset(fft_work_, 0, fft_size_ * sizeof(float));
+    delay_line_index_ = 0;
+}
+
+uint32_t PConvSingle::GetFFTSize() const {
+    return segment_size_ * 2;
+}
+
+uint32_t PConvSingle::GetSegmentCount() const {
+    return segment_count_;
+}
+
+uint32_t PConvSingle::GetSegmentSize() const {
+    return segment_size_;
+}
+
+bool PConvSingle::InstanceUsable() const {
+    return instance_usable_;
 }
 
 void PConvSingle::Convolve(float *buffer) {
     ConvSegment(buffer, false, 0);
 }
 
-void PConvSingle::ConvolveInterleaved(float *buffer, int channel) {
+void PConvSingle::ConvolveInterleaved(float *buffer, const int channel) {
     ConvSegment(buffer, true, channel);
 }
 
-void PConvSingle::ConvSegment(float *buffer, bool interleaved, int channel) {
-    if (!this->instanceUsable) return;
+void PConvSingle::ConvSegment(float *buffer, const bool interleaved, const int channel) {
+    if (!instance_usable_) return;
 
     float *input;
     if (interleaved) {
-        for (int i = 0; i < this->segmentSize; i++) {
-            this->monoBuffer[i] = buffer[i * 2 + channel];
+        for (int i = 0; i < segment_size_; i++) {
+            mono_buffer_[i] = buffer[i * 2 + channel];
         }
-        input = this->monoBuffer;
+        input = mono_buffer_;
     } else {
         input = buffer;
     }
 
-    // Overlap-save: form [previous_overlap | current_input] in fftBuffer
-    memcpy(this->fftBuffer, this->overlapBuffer, this->segmentSize * sizeof(float));
-    memcpy(this->fftBuffer + this->segmentSize, input, this->segmentSize * sizeof(float));
+    // Overlap-save: form [previous_overlap | current_input] in fft_buffer_
+    memcpy(fft_buffer_, overlap_buffer_, segment_size_ * sizeof(float));
+    memcpy(fft_buffer_ + segment_size_, input, segment_size_ * sizeof(float));
 
     // Save current input as overlap for next call
-    memcpy(this->overlapBuffer, input, this->segmentSize * sizeof(float));
+    memcpy(overlap_buffer_, input, segment_size_ * sizeof(float));
 
     // Forward FFT the combined buffer into the current delay line slot
     pffft_transform(
-        this->fftSetup,
-        this->fftBuffer,
-        this->inputHistory[this->delayLineIndex],
-        this->fftWork,
+        fft_setup_,
+        fft_buffer_,
+        input_history_[delay_line_index_],
+        fft_work_,
         PFFFT_FORWARD
     );
 
     // Frequency-domain multiply-accumulate across all kernel segments
-    memset(this->accumBuffer, 0, this->fftSize * sizeof(float));
-    for (int k = 0; k < this->segmentCount; k++) {
-        int idx = (this->delayLineIndex - k + this->segmentCount) % this->segmentCount;
+    memset(accum_buffer_, 0, fft_size_ * sizeof(float));
+    for (int k = 0; k < segment_count_; k++) {
+        const uint32_t idx = (delay_line_index_ - k + segment_count_) % segment_count_;
         pffft_zconvolve_accumulate(
-            this->fftSetup,
-            this->inputHistory[idx],
-            this->filterSegments[k],
-            this->accumBuffer,
-            1.0f
+            fft_setup_, input_history_[idx], filter_segments_[k], accum_buffer_, 1.0f
         );
     }
 
     // Inverse FFT
-    pffft_transform(
-        this->fftSetup, this->accumBuffer, this->fftBuffer, this->fftWork, PFFFT_BACKWARD
-    );
+    pffft_transform(fft_setup_, accum_buffer_, fft_buffer_, fft_work_, PFFFT_BACKWARD);
 
     // Scale by 1/N (pffft does not normalize)
-    float scale = 1.0f / (float) this->fftSize;
-    for (int i = 0; i < this->fftSize; i++) {
-        this->fftBuffer[i] *= scale;
+    const float scale = 1.0f / static_cast<float>(fft_size_);
+    for (int i = 0; i < fft_size_; i++) {
+        fft_buffer_[i] *= scale;
     }
 
     // Output the second half (valid overlap-save region)
-    float *output = this->fftBuffer + this->segmentSize;
+    const float *output = fft_buffer_ + segment_size_;
 
     if (interleaved) {
-        for (int i = 0; i < this->segmentSize; i++) {
+        for (int i = 0; i < segment_size_; i++) {
             buffer[i * 2 + channel] = output[i];
         }
     } else {
-        memcpy(buffer, output, this->segmentSize * sizeof(float));
+        memcpy(buffer, output, segment_size_ * sizeof(float));
     }
 
     // Advance delay line ring buffer
-    this->delayLineIndex = (this->delayLineIndex + 1) % this->segmentCount;
+    delay_line_index_ = (delay_line_index_ + 1) % segment_count_;
 }
 
-int PConvSingle::GetFFTSize() {
-    return this->segmentSize * 2;
-}
-
-int PConvSingle::GetSegmentCount() {
-    return this->segmentCount;
-}
-
-int PConvSingle::GetSegmentSize() {
-    return this->segmentSize;
-}
-
-bool PConvSingle::InstanceUsable() {
-    return this->instanceUsable;
-}
-
-int PConvSingle::LoadKernel(const float *kernel, int kernelSize, int segmentSize) {
-    if (kernel != nullptr && kernelSize >= 2 && segmentSize >= 2
-        && (segmentSize & (segmentSize - 1)) == 0) {
-        this->instanceUsable = false;
-        ReleaseResources();
-        this->segmentSize = segmentSize;
-        int n = ProcessKernel(kernel, kernelSize, 1);
-        if (n != 0) {
-            this->instanceUsable = true;
-            return n;
-        }
-        ReleaseResources();
-    }
-    return 0;
-}
-
-int PConvSingle::LoadKernel(
-    const float *kernel, float gain, int kernelSize, int segmentSize
+uint32_t PConvSingle::LoadKernel(
+    const float *kernel, const uint32_t kernel_size, const uint32_t segment_size
 ) {
-    if (kernel != nullptr && kernelSize >= 2 && segmentSize >= 2
-        && (segmentSize & (segmentSize - 1)) == 0) {
-        this->instanceUsable = false;
+    if (kernel != nullptr && kernel_size >= 2 && segment_size >= 2
+        && (segment_size & segment_size - 1) == 0) {
+        instance_usable_ = false;
         ReleaseResources();
-        this->segmentSize = segmentSize;
-        int n = ProcessKernel(kernel, gain, kernelSize, 1);
+        segment_size_ = segment_size;
+        const uint32_t n = ProcessKernel(kernel, kernel_size);
         if (n != 0) {
-            this->instanceUsable = true;
+            instance_usable_ = true;
             return n;
         }
         ReleaseResources();
@@ -149,141 +140,146 @@ int PConvSingle::LoadKernel(
     return 0;
 }
 
-int PConvSingle::ProcessKernel(const float *kernel, int kernelSize, int unused) {
-    this->fftSize = this->segmentSize * 2;
-    this->segmentCount = (kernelSize + this->segmentSize - 1) / this->segmentSize;
+uint32_t PConvSingle::LoadKernel(
+    const float *kernel,
+    const float gain,
+    const uint32_t kernel_size,
+    const uint32_t segment_size
+) {
+    if (kernel != nullptr && kernel_size >= 2 && segment_size >= 2
+        && (segment_size & segment_size - 1) == 0) {
+        instance_usable_ = false;
+        ReleaseResources();
+        segment_size_ = segment_size;
+        const uint32_t n = ProcessKernel(kernel, gain, kernel_size);
+        if (n != 0) {
+            instance_usable_ = true;
+            return n;
+        }
+        ReleaseResources();
+    }
+    return 0;
+}
 
-    this->fftSetup = pffft_new_setup(this->fftSize, PFFFT_REAL);
-    if (this->fftSetup == nullptr) return 0;
+uint32_t PConvSingle::ProcessKernel(const float *kernel, const uint32_t kernel_size) {
+    fft_size_ = segment_size_ * 2;
+    segment_count_ = (kernel_size + segment_size_ - 1) / segment_size_;
 
-    this->fftWork = (float *) pffft_aligned_malloc(this->fftSize * sizeof(float));
-    this->fftBuffer = (float *) pffft_aligned_malloc(this->fftSize * sizeof(float));
-    this->accumBuffer = (float *) pffft_aligned_malloc(this->fftSize * sizeof(float));
-    this->overlapBuffer =
-        (float *) pffft_aligned_malloc(this->segmentSize * sizeof(float));
-    this->monoBuffer = (float *) pffft_aligned_malloc(this->segmentSize * sizeof(float));
+    fft_setup_ = pffft_new_setup(static_cast<int>(fft_size_), PFFFT_REAL);
+    if (fft_setup_ == nullptr) return 0;
 
-    if (!this->fftWork || !this->fftBuffer || !this->accumBuffer || !this->overlapBuffer
-        || !this->monoBuffer) {
+    fft_work_ = static_cast<float *>(pffft_aligned_malloc(fft_size_ * sizeof(float)));
+    fft_buffer_ = static_cast<float *>(pffft_aligned_malloc(fft_size_ * sizeof(float)));
+    accum_buffer_ = static_cast<float *>(pffft_aligned_malloc(fft_size_ * sizeof(float)));
+    overlap_buffer_ =
+        static_cast<float *>(pffft_aligned_malloc(segment_size_ * sizeof(float)));
+    mono_buffer_ =
+        static_cast<float *>(pffft_aligned_malloc(segment_size_ * sizeof(float)));
+
+    if (!fft_work_ || !fft_buffer_ || !accum_buffer_ || !overlap_buffer_
+        || !mono_buffer_) {
         return 0;
     }
 
-    memset(this->overlapBuffer, 0, this->segmentSize * sizeof(float));
-    memset(this->monoBuffer, 0, this->segmentSize * sizeof(float));
+    memset(overlap_buffer_, 0, segment_size_ * sizeof(float));
+    memset(mono_buffer_, 0, segment_size_ * sizeof(float));
 
-    this->filterSegments = new float *[this->segmentCount];
-    this->inputHistory = new float *[this->segmentCount];
-    for (int i = 0; i < this->segmentCount; i++) {
-        this->filterSegments[i] =
-            (float *) pffft_aligned_malloc(this->fftSize * sizeof(float));
-        this->inputHistory[i] =
-            (float *) pffft_aligned_malloc(this->fftSize * sizeof(float));
-        memset(this->inputHistory[i], 0, this->fftSize * sizeof(float));
+    filter_segments_ = new float *[segment_count_];
+    input_history_ = new float *[segment_count_];
+    for (int i = 0; i < segment_count_; i++) {
+        filter_segments_[i] =
+            static_cast<float *>(pffft_aligned_malloc(fft_size_ * sizeof(float)));
+        input_history_[i] =
+            static_cast<float *>(pffft_aligned_malloc(fft_size_ * sizeof(float)));
+        memset(input_history_[i], 0, fft_size_ * sizeof(float));
     }
 
-    // Split kernel into segments, zero-pad each to fftSize, and forward FFT
-    for (int i = 0; i < this->segmentCount; i++) {
-        memset(this->fftBuffer, 0, this->fftSize * sizeof(float));
-        int offset = i * this->segmentSize;
-        int remaining = kernelSize - offset;
-        int count = remaining < this->segmentSize ? remaining : this->segmentSize;
-        memcpy(this->fftBuffer, kernel + offset, count * sizeof(float));
+    // Split kernel into segments, zero-pad each to fft_size_, and forward FFT
+    for (int i = 0; i < segment_count_; i++) {
+        memset(fft_buffer_, 0, fft_size_ * sizeof(float));
+        const uint32_t offset = i * segment_size_;
+        uint32_t remaining = kernel_size - offset;
+        const uint32_t count = remaining < segment_size_ ? remaining : segment_size_;
+        memcpy(fft_buffer_, kernel + offset, count * sizeof(float));
         pffft_transform(
-            this->fftSetup,
-            this->fftBuffer,
-            this->filterSegments[i],
-            this->fftWork,
-            PFFFT_FORWARD
+            fft_setup_, fft_buffer_, filter_segments_[i], fft_work_, PFFFT_FORWARD
         );
     }
 
-    this->delayLineIndex = 0;
-    return this->segmentCount;
+    delay_line_index_ = 0;
+    return segment_count_;
 }
 
-int PConvSingle::ProcessKernel(
-    const float *kernel, float gain, int kernelSize, int unused
+uint32_t PConvSingle::ProcessKernel(
+    const float *kernel, const float gain, const uint32_t kernel_size
 ) {
     // Scale kernel by gain factor before processing
-    float *scaled = (float *) pffft_aligned_malloc(kernelSize * sizeof(float));
+    auto *scaled =
+        static_cast<float *>(pffft_aligned_malloc(kernel_size * sizeof(float)));
     if (!scaled) return 0;
-    for (int i = 0; i < kernelSize; i++) {
+    for (int i = 0; i < kernel_size; i++) {
         scaled[i] = kernel[i] * gain;
     }
-    int result = ProcessKernel(scaled, kernelSize, unused);
+    const uint32_t result = ProcessKernel(scaled, kernel_size);
     pffft_aligned_free(scaled);
     return result;
 }
 
 void PConvSingle::ReleaseResources() {
-    if (this->filterSegments != nullptr) {
-        for (int i = 0; i < this->segmentCount; i++) {
-            pffft_aligned_free(this->filterSegments[i]);
+    if (filter_segments_ != nullptr) {
+        for (int i = 0; i < segment_count_; i++) {
+            pffft_aligned_free(filter_segments_[i]);
         }
-        delete[] this->filterSegments;
-        this->filterSegments = nullptr;
+        delete[] filter_segments_;
+        filter_segments_ = nullptr;
     }
 
-    if (this->inputHistory != nullptr) {
-        for (int i = 0; i < this->segmentCount; i++) {
-            pffft_aligned_free(this->inputHistory[i]);
+    if (input_history_ != nullptr) {
+        for (int i = 0; i < segment_count_; i++) {
+            pffft_aligned_free(input_history_[i]);
         }
-        delete[] this->inputHistory;
-        this->inputHistory = nullptr;
+        delete[] input_history_;
+        input_history_ = nullptr;
     }
 
-    if (this->overlapBuffer != nullptr) {
-        pffft_aligned_free(this->overlapBuffer);
-        this->overlapBuffer = nullptr;
+    if (overlap_buffer_ != nullptr) {
+        pffft_aligned_free(overlap_buffer_);
+        overlap_buffer_ = nullptr;
     }
 
-    if (this->fftBuffer != nullptr) {
-        pffft_aligned_free(this->fftBuffer);
-        this->fftBuffer = nullptr;
+    if (fft_buffer_ != nullptr) {
+        pffft_aligned_free(fft_buffer_);
+        fft_buffer_ = nullptr;
     }
 
-    if (this->accumBuffer != nullptr) {
-        pffft_aligned_free(this->accumBuffer);
-        this->accumBuffer = nullptr;
+    if (accum_buffer_ != nullptr) {
+        pffft_aligned_free(accum_buffer_);
+        accum_buffer_ = nullptr;
     }
 
-    if (this->monoBuffer != nullptr) {
-        pffft_aligned_free(this->monoBuffer);
-        this->monoBuffer = nullptr;
+    if (mono_buffer_ != nullptr) {
+        pffft_aligned_free(mono_buffer_);
+        mono_buffer_ = nullptr;
     }
 
-    if (this->fftWork != nullptr) {
-        pffft_aligned_free(this->fftWork);
-        this->fftWork = nullptr;
+    if (fft_work_ != nullptr) {
+        pffft_aligned_free(fft_work_);
+        fft_work_ = nullptr;
     }
 
-    if (this->fftSetup != nullptr) {
-        pffft_destroy_setup(this->fftSetup);
-        this->fftSetup = nullptr;
+    if (fft_setup_ != nullptr) {
+        pffft_destroy_setup(fft_setup_);
+        fft_setup_ = nullptr;
     }
 
-    this->instanceUsable = false;
-    this->segmentCount = 0;
-    this->segmentSize = 0;
-    this->fftSize = 0;
-    this->delayLineIndex = 0;
-}
-
-void PConvSingle::Reset() {
-    if (!this->instanceUsable) return;
-
-    for (int i = 0; i < this->segmentCount; i++) {
-        memset(this->inputHistory[i], 0, this->fftSize * sizeof(float));
-    }
-    memset(this->overlapBuffer, 0, this->segmentSize * sizeof(float));
-    memset(this->fftBuffer, 0, this->fftSize * sizeof(float));
-    memset(this->accumBuffer, 0, this->fftSize * sizeof(float));
-    memset(this->monoBuffer, 0, this->segmentSize * sizeof(float));
-    memset(this->fftWork, 0, this->fftSize * sizeof(float));
-    this->delayLineIndex = 0;
+    instance_usable_ = false;
+    segment_count_ = 0;
+    segment_size_ = 0;
+    fft_size_ = 0;
+    delay_line_index_ = 0;
 }
 
 void PConvSingle::UnloadKernel() {
-    this->instanceUsable = false;
+    instance_usable_ = false;
     ReleaseResources();
 }
