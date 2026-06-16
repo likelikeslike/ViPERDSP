@@ -35,13 +35,7 @@ public:
 
     void Process(std::vector<float> &buffer, uint32_t size);
     void DispatchRawParam(
-        int param,
-        int val1,
-        int val2,
-        int val3,
-        int val4,
-        uint32_t arr_size,
-        signed char *arr
+        int param, int val1, int val2, int val3, uint32_t arr_size, signed char *arr
     );
 
     void RequestEffectsReset();

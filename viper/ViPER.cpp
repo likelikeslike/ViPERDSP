@@ -234,7 +234,6 @@ void ViPER::DispatchRawParam(
     int val1,
     const int val2,
     const int val3,
-    int val4, // TODO: Remove this.
     const uint32_t arr_size,
     signed char *arr
 ) {
