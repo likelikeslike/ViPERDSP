@@ -8,8 +8,8 @@ public:
 
     void Reset();
 
-    uint32_t GetBufferOffset() const;
-    uint32_t GetBufferSize() const;
+    [[nodiscard]] uint32_t GetBufferOffset() const;
+    [[nodiscard]] uint32_t GetBufferSize() const;
     float *GetBuffer();
 
     void SetBufferOffset(uint32_t offset);

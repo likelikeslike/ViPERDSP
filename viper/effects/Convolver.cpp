@@ -29,7 +29,7 @@ Convolver::~Convolver() {
     delete[] kernel_buffer_;
 }
 
-uint32_t Convolver::Process(float *source, float *dest, const uint32_t frame_size) {
+uint32_t Convolver::Process(const float *source, float *dest, const uint32_t frame_size) {
     if (enable_ && kernel_ch1_.InstanceUsable() && kernel_ch2_.InstanceUsable()
         && wave_buffer_l_->PushSamples(source, frame_size) != 0) {
         while (wave_buffer_l_->GetBufferOffset() >= kConvSegmentSize) {

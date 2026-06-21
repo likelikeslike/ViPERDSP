@@ -55,8 +55,8 @@ void Harmonic::Reset() {
     prev_out_ = 0.0;
 }
 
-void Harmonic::SetHarmonics(const float *coefficients) {
-    UpdateCoeffs(coefficients);
+void Harmonic::SetHarmonics(const float *coeffs) {
+    UpdateCoeffs(coeffs);
     Reset();
 }
 

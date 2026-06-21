@@ -8,7 +8,7 @@ public:
     VHE();
     ~VHE();
 
-    uint32_t Process(float *source, float *dest, uint32_t frame_size);
+    uint32_t Process(const float *source, float *dest, uint32_t frame_size);
     void Reset();
 
     [[nodiscard]] bool GetEnable() const;

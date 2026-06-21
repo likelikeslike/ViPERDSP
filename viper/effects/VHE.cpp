@@ -22,7 +22,7 @@ VHE::~VHE() {
     delete buf_b_;
 }
 
-uint32_t VHE::Process(float *source, float *dest, const uint32_t frame_size) {
+uint32_t VHE::Process(const float *source, float *dest, const uint32_t frame_size) {
     if (enable_ && conv_left_.InstanceUsable() && conv_right_.InstanceUsable()) {
         if (buf_a_->PushSamples(source, frame_size) != 0) {
             while (buf_a_->GetBufferOffset() > conv_size_) {

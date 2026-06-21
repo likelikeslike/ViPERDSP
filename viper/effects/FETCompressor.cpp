@@ -258,17 +258,16 @@ double FETCompressor::ProcessSidechain(const double in) {
         if (!no_clip_) {
             const float makeup_gain = adaptive_gain_state_ + half_thresh_gr;
             return exp(neg_smoothed_gr - makeup_gain);
-        } else {
-            float output_level = log_input - smoothed_gr;
-            float makeup_gain = half_thresh_gr + adaptive_gain_state_;
-            if (output_level - makeup_gain > 0.0011512704f) {
-                output_level = output_level - half_thresh_gr;
-                output_level = output_level + 0.0011512704f;
-                makeup_gain = output_level + half_thresh_gr;
-                adaptive_gain_state_ = output_level;
-            }
-            return exp(neg_smoothed_gr - makeup_gain);
         }
+        float output_level = log_input - smoothed_gr;
+        float makeup_gain = half_thresh_gr + adaptive_gain_state_;
+        if (output_level - makeup_gain > 0.0011512704f) {
+            output_level = output_level - half_thresh_gr;
+            output_level = output_level + 0.0011512704f;
+            makeup_gain = output_level + half_thresh_gr;
+            adaptive_gain_state_ = output_level;
+        }
+        return exp(neg_smoothed_gr - makeup_gain);
     }
 
     return exp(smoothed_gain_ - smoothed_gr);
