@@ -38,10 +38,10 @@ private:
 
     uint32_t sampling_rate_;
 
-    float attack_raw_;
-    float release_raw_;
-    float crest_raw_;
-    float adapt_raw_;
+    float attack_seconds_;
+    float release_seconds_;
+    float crest_seconds_;
+    float adapt_seconds_;
 
     float smoothing_coeff_;
     float release_smooth_gr_;

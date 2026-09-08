@@ -100,15 +100,15 @@ void StereoImager::SetEnable(const bool enable) {
 }
 
 void StereoImager::SetLowWidth(const float value) {
-    band_widths_[0] = value / 100.0f;
+    band_widths_[0] = value;
 }
 
 void StereoImager::SetMidWidth(const float value) {
-    band_widths_[1] = value / 100.0f;
+    band_widths_[1] = value;
 }
 
 void StereoImager::SetHighWidth(const float value) {
-    band_widths_[2] = value / 100.0f;
+    band_widths_[2] = value;
 }
 
 void StereoImager::SetLowCrossover(const float value) {

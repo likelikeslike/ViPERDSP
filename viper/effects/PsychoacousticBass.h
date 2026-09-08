@@ -13,9 +13,9 @@ public:
 
     void SetEnable(bool enable);
     void SetCutoff(uint32_t value);
-    void SetIntensity(uint32_t value);
+    void SetIntensity(float value);
     void SetHarmonicOrder(uint32_t value);
-    void SetOriginalBassLevel(uint32_t value);
+    void SetOriginalBassLevel(float value);
     void SetSamplingRate(uint32_t sampling_rate);
 
 private:

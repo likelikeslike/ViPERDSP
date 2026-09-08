@@ -171,10 +171,33 @@ constexpr int kParamDynamicEqBandFilterType = 0x102A8;
 
 namespace viper {
 
+enum class ParamValueType : uint32_t {
+    kBool = 1,
+    kInt = 2,
+    kFloat = 3,
+    kFloatArray = 4,
+    kBytes = 5,
+    kIntArray = 6,
+};
+
+struct ParamValue {
+    ParamValueType type = ParamValueType::kInt;
+    int32_t index = -1;
+    bool bool_value = false;
+    int32_t int_value = 0;
+    float float_value = 0.0f;
+    const int32_t *int_array = nullptr;
+    size_t int_count = 0;
+    const float *float_array = nullptr;
+    size_t float_count = 0;
+    const uint8_t *bytes = nullptr;
+    size_t byte_count = 0;
+};
+
 struct MasterLimiterParams {
-    float threshold = 1.0f;     // 0..1
-    float output_volume = 1.0f; // 0..1
-    float channel_pan = 0.0f;   // -1..+1
+    float threshold = 1.0f;     // linear limiter gate, 0.3..1
+    float output_volume = 1.0f; // linear output scale, 0.01..2
+    float channel_pan = 0.0f;   // -1..1
 
     bool operator==(const MasterLimiterParams &other) const {
         return threshold == other.threshold && output_volume == other.output_volume
@@ -184,9 +207,9 @@ struct MasterLimiterParams {
 
 struct PlaybackGainControlParams {
     bool enable = false;
-    float strength = 0.0f;         // 0..1
-    float max_gain = 0.0f;         // 0..1
-    float output_threshold = 0.0f; // 0..1
+    float strength = 0.0f;         // ratio, 0.5..3
+    float max_gain = 0.0f;         // linear max gain, 1..10
+    float output_threshold = 0.0f; // linear volume, 0.3..1
 
     bool operator==(const PlaybackGainControlParams &other) const {
         if (!enable && !other.enable) return true;
@@ -198,9 +221,9 @@ struct PlaybackGainControlParams {
 
 struct LufsParams {
     bool enable = false;
-    float target = 0.0f;
-    float max_gain = 0.0f; // dB
-    int speed = 0;
+    float target = 0.0f;   // LUFS, -24..-8
+    float max_gain = 0.0f; // dB, 0..12
+    int speed = 0;         // 0..2
 
     bool operator==(const LufsParams &other) const {
         if (!enable && !other.enable) return true;
@@ -211,21 +234,21 @@ struct LufsParams {
 
 struct FetCompressorParams {
     bool enable = false;
-    float threshold = 0.0f; // 0..1
-    float ratio = 0.0f;     // 0..1
-    float knee = 0.0f;      // 0..1
+    float threshold = 0.0f; // natural-log gain, compressorDbToRaw(-48)..0
+    float ratio = 0.0f;     // signed ratio, -2..0
+    float knee = 0.0f;      // natural-log gain, 0..compressorDbToRaw(12)
     bool knee_auto = false;
-    float gain = 0.0f; // 0..1
+    float gain = 0.0f; // natural-log gain, 0..compressorDbToRaw(24)
     bool gain_auto = false;
-    float attack = 0.0f; // 0..1
+    float attack = 0.0f; // seconds, 0.001..0.1
     bool attack_auto = false;
-    float release = 0.0f; // 0..1
+    float release = 0.0f; // seconds, 0.005..0.5
     bool release_auto = false;
-    float knee_multi = 0.0f;
-    float max_attack = 0.0f;
-    float max_release = 0.0f;
-    float crest = 0.0f;
-    float adapt = 0.0f;
+    float knee_multi = 0.0f;  // 0..4
+    float max_attack = 0.0f;  // seconds, 0.001..0.1
+    float max_release = 0.0f; // seconds, 0.005..0.5
+    float crest = 0.0f;       // seconds, 0.005..0.3
+    float adapt = 0.0f;       // seconds, 1..16
     bool no_clip = false;
 
     bool operator==(const FetCompressorParams &other) const {
@@ -245,8 +268,8 @@ struct FetCompressorParams {
 struct BassParams {
     bool enable = false;
     int mode = 0;
-    uint32_t frequency = 0; // Hz
-    float gain = 0.0f;      // 0..1
+    uint32_t frequency = 0; // Hz, 15..150
+    float gain = 0.0f;      // linear, 0.5..10
     bool anti_pop = false;
 
     bool operator==(const BassParams &other) const {
@@ -260,8 +283,8 @@ struct BassParams {
 struct BassMonoParams {
     bool enable = false;
     int mode = 0;
-    uint32_t frequency = 0;
-    float gain = 0.0f;
+    uint32_t frequency = 0; // Hz, 15..150
+    float gain = 0.0f;      // linear, 0.5..10
     bool anti_pop = false;
 
     bool operator==(const BassMonoParams &other) const {
@@ -274,10 +297,10 @@ struct BassMonoParams {
 
 struct PsychoacousticBassParams {
     bool enable = false;
-    uint32_t cutoff = 0; // Hz
-    uint32_t intensity = 0;
-    uint32_t harmonic_order = 0;
-    uint32_t original_level = 0;
+    uint32_t cutoff = 0;         // Hz, 60..150
+    float intensity = 0.0f;      // 0..1
+    uint32_t harmonic_order = 0; // 2..5
+    float original_level = 0.0f; // 0..1
 
     bool operator==(const PsychoacousticBassParams &other) const {
         if (!enable && !other.enable) return true;
@@ -289,8 +312,8 @@ struct PsychoacousticBassParams {
 
 struct SpectrumExtensionParams {
     bool enable = false;
-    int strength = 0;
-    float exciter = 0.0f; // 0..1
+    int strength = 0;     // reference frequency, Hz, 2200..8200
+    float exciter = 0.0f; // linear harmonic gain, 0..6
 
     bool operator==(const SpectrumExtensionParams &other) const {
         if (!enable && !other.enable) return true;
@@ -334,9 +357,9 @@ struct DdcParams {
 
 struct FieldSurroundParams {
     bool enable = false;
-    float widening = 0.0f;  // 0..1
-    float mid_image = 0.0f; // 0..1
-    short depth = 0;
+    float widening = 0.0f;  // 0..8
+    float mid_image = 0.0f; // 1..2
+    short depth = 0;        // 200..950
 
     bool operator==(const FieldSurroundParams &other) const {
         if (!enable && !other.enable) return true;
@@ -347,10 +370,10 @@ struct FieldSurroundParams {
 
 struct DiffSurroundParams {
     bool enable = false;
-    float delay = 0.0f; // 0..1
+    float delay = 0.0f; // ms, 1..20
     bool reverse = false;
     float wet_dry_mix = 0.0f; // 0..1
-    float lp_cutoff = 0.0f;   // Hz
+    float lp_cutoff = 0.0f;   // Hz, 0..20000
 
     bool operator==(const DiffSurroundParams &other) const {
         if (!enable && !other.enable) return true;
@@ -361,11 +384,11 @@ struct DiffSurroundParams {
 
 struct StereoImagerParams {
     bool enable = false;
-    float low_width = 0.0f;      // percent: 0..200
-    float mid_width = 0.0f;      // percent: 0..200
-    float high_width = 0.0f;     // percent: 0..200
-    float low_crossover = 0.0f;  // Hz
-    float high_crossover = 0.0f; // Hz
+    float low_width = 0.0f;      // 0..2
+    float mid_width = 0.0f;      // 0..2
+    float high_width = 0.0f;     // 0..2
+    float low_crossover = 0.0f;  // Hz, 80..400
+    float high_crossover = 0.0f; // Hz, 2000..8000
 
     bool operator==(const StereoImagerParams &other) const {
         if (!enable && !other.enable) return true;
@@ -378,7 +401,7 @@ struct StereoImagerParams {
 
 struct HeadphoneSurroundParams {
     bool enable = false;
-    int quality = 0;
+    int quality = 0; // 0..4
 
     bool operator==(const HeadphoneSurroundParams &other) const {
         if (!enable && !other.enable) return true;
@@ -404,13 +427,13 @@ struct ReverbParams {
 
 struct DynamicSystemParams {
     bool enable = false;
-    int x_coeff_low = 0;
-    int x_coeff_high = 0;
-    int y_coeff_low = 0;
-    int y_coeff_high = 0;
+    int x_coeff_low = 0;         // 0..2400
+    int x_coeff_high = 0;        // 0..12000
+    int y_coeff_low = 0;         // 0..200
+    int y_coeff_high = 0;        // 0..300
     float side_gain_low = 0.0f;  // 0..1
     float side_gain_high = 0.0f; // 0..1
-    float strength = 0.0f;       // 0..1
+    float strength = 0.0f;       // linear bass gain, 1..8       // 0..1
 
     bool operator==(const DynamicSystemParams &other) const {
         if (!enable && !other.enable) return true;
@@ -424,8 +447,8 @@ struct DynamicSystemParams {
 
 struct ClarityParams {
     bool enable = false;
-    int mode = 0; // 0..1
-    float gain = 0.0f;
+    int mode = 0;      // 0..1
+    float gain = 0.0f; // linear, 0..4.5
 
     bool operator==(const ClarityParams &other) const {
         if (!enable && !other.enable) return true;
@@ -473,21 +496,21 @@ struct SpeakerCorrectionParams {
 
 struct MultibandCompressorBandParams {
     bool enable = false;
-    float threshold = 0.0f;
-    float ratio = 0.0f;
-    float knee = 0.0f;
+    float threshold = 0.0f; // natural-log gain, compressorDbToRaw(-48)..0
+    float ratio = 0.0f;     // signed ratio, -2..0
+    float knee = 0.0f;      // natural-log gain, 0..compressorDbToRaw(12)
     bool knee_auto = false;
-    float gain = 0.0f;
+    float gain = 0.0f; // natural-log gain, 0..compressorDbToRaw(24)
     bool gain_auto = false;
-    float attack = 0.0f;
+    float attack = 0.0f; // seconds, 0.001..0.1
     bool attack_auto = false;
-    float release = 0.0f;
+    float release = 0.0f; // seconds, 0.005..0.5
     bool release_auto = false;
-    float knee_multi = 0.0f;
-    float max_attack = 0.0f;
-    float max_release = 0.0f;
-    float crest = 0.0f;
-    float adapt = 0.0f;
+    float knee_multi = 0.0f;  // 0..4
+    float max_attack = 0.0f;  // seconds, 0.001..0.1
+    float max_release = 0.0f; // seconds, 0.005..0.5
+    float crest = 0.0f;       // seconds, 0.005..0.3
+    float adapt = 0.0f;       // seconds, 1..16
     bool no_clip = false;
 
     bool operator==(const MultibandCompressorBandParams &other) const {
@@ -519,12 +542,12 @@ struct MultibandCompressorParams {
 };
 
 struct DynamicEqBandParams {
-    float frequency = 0.0f; // Hz
-    float q = 0.0f;
-    float gain = 0.0f;      // dB
-    float threshold = 0.0f; // dB
-    float attack = 0.0f;    // ms
-    float release = 0.0f;   // ms
+    float frequency = 0.0f; // Hz, 20..20000
+    float q = 0.0f;         // 0.5..8
+    float gain = 0.0f;      // dB, -12..12
+    float threshold = 0.0f; // dB, -80..0
+    float attack = 0.0f;    // ms, 1..100
+    float release = 0.0f;   // ms, 10..500
     int filter_type = 0;
 
     bool operator==(const DynamicEqBandParams &other) const {

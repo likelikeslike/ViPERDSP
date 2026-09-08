@@ -141,9 +141,10 @@ void PsychoacousticBass::SetCutoff(uint32_t value) {
     }
 }
 
-void PsychoacousticBass::SetIntensity(uint32_t value) {
-    if (value > 100) value = 100;
-    intensity_ = static_cast<float>(value) / 100.0f;
+void PsychoacousticBass::SetIntensity(float value) {
+    if (value < 0.0f) value = 0.0f;
+    if (value > 1.0f) value = 1.0f;
+    intensity_ = value;
 }
 
 void PsychoacousticBass::SetHarmonicOrder(uint32_t value) {
@@ -155,9 +156,10 @@ void PsychoacousticBass::SetHarmonicOrder(uint32_t value) {
     }
 }
 
-void PsychoacousticBass::SetOriginalBassLevel(uint32_t value) {
-    if (value > 100) value = 100;
-    original_bass_level_ = static_cast<float>(value) / 100.0f;
+void PsychoacousticBass::SetOriginalBassLevel(float value) {
+    if (value < 0.0f) value = 0.0f;
+    if (value > 1.0f) value = 1.0f;
+    original_bass_level_ = value;
 }
 
 void PsychoacousticBass::RefreshFilters() {

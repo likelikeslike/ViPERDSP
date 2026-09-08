@@ -1,10 +1,5 @@
 #pragma once
 
-#include <array>
-#include <atomic>
-#include <optional>
-#include <vector>
-
 #include "ViPERParams.h"
 #include "effects/AnalogX.h"
 #include "effects/ColorfulMusic.h"
@@ -32,15 +27,17 @@
 #include "effects/ViPERDDC.h"
 #include "utils/AdaptiveBuffer.h"
 #include "utils/WaveBuffer.h"
+#include <array>
+#include <atomic>
+#include <optional>
+#include <vector>
 
 class ViPER {
 public:
     ViPER();
 
     void Process(std::vector<float> &buffer, uint32_t size);
-    void DispatchRawParam(
-        int param, int val1, int val2, int val3, uint32_t arr_size, signed char *arr
-    );
+    bool DispatchParamValue(int param, const viper::ParamValue &value);
 
     void RequestEffectsReset();
     void ResetAllEffects();

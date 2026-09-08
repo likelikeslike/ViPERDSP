@@ -6,10 +6,7 @@ static float calculate_exp_something(const uint32_t sampling_rate, const float t
     return 1.0f - exp(-1.0f / (time * static_cast<float>(sampling_rate)));
 }
 
-static float calculate_time_coeff(
-    const uint32_t sampling_rate, const float value, const float scale, const float offset
-) {
-    const float time = exp(value * scale + offset);
+static float calculate_time_coeff(const uint32_t sampling_rate, const float time) {
     return time <= 0.0 ? 1.0 : calculate_exp_something(sampling_rate, time);
 }
 
@@ -21,21 +18,21 @@ FETCompressor::FETCompressor() :
     auto_release_(true),
     no_clip_(true),
     sampling_rate_(VIPER_DEFAULT_SAMPLING_RATE),
-    attack_raw_(0.514679f),
-    release_raw_(0.384311f),
-    crest_raw_(0.615689f),
-    adapt_raw_(0.660964f) {
+    attack_seconds_(0.005f),
+    release_seconds_(0.050f),
+    crest_seconds_(0.200f),
+    adapt_seconds_(2.5f) {
     SetThreshold(0.0f);
     SetRatio(0.0f);
     SetKnee(0.0f);
     SetGain(0.0f);
-    SetAttack(attack_raw_);
-    SetRelease(release_raw_);
-    SetKneeMulti(0.5f);
-    SetMaxAttack(0.879450f);
-    SetMaxRelease(0.884311f);
-    SetCrest(crest_raw_);
-    SetAdapt(adapt_raw_);
+    SetAttack(attack_seconds_);
+    SetRelease(release_seconds_);
+    SetKneeMulti(2.0f);
+    SetMaxAttack(0.080f);
+    SetMaxRelease(1.0f);
+    SetCrest(crest_seconds_);
+    SetAdapt(adapt_seconds_);
     Reset();
 }
 
@@ -73,15 +70,15 @@ void FETCompressor::SetEnable(const bool enable) {
 }
 
 void FETCompressor::SetThreshold(const float value) {
-    threshold_ = log(pow(10.0f, value * -60.0f / 20.0f));
+    threshold_ = value;
 }
 
 void FETCompressor::SetRatio(const float value) {
-    ratio_ = -value;
+    ratio_ = value;
 }
 
 void FETCompressor::SetKnee(const float value) {
-    knee_ = log(pow(10.0f, value * 60.0f / 20.0f));
+    knee_ = value;
 }
 
 void FETCompressor::SetKneeAuto(const bool enable) {
@@ -89,7 +86,7 @@ void FETCompressor::SetKneeAuto(const bool enable) {
 }
 
 void FETCompressor::SetGain(const float value) {
-    gain_ = log(pow(10.0f, value * 60.0f / 20.0f));
+    gain_ = value;
 }
 
 void FETCompressor::SetGainAuto(const bool enable) {
@@ -97,9 +94,9 @@ void FETCompressor::SetGainAuto(const bool enable) {
 }
 
 void FETCompressor::SetAttack(const float value) {
-    attack_raw_ = value;
-    attack1_ = exp(value * 7.600903f - 9.21034f);
-    attack2_ = calculate_time_coeff(sampling_rate_, value, 7.600903f, -9.21034f);
+    attack_seconds_ = value;
+    attack1_ = value;
+    attack2_ = calculate_time_coeff(sampling_rate_, attack1_);
 }
 
 void FETCompressor::SetAttackAuto(const bool enable) {
@@ -107,9 +104,9 @@ void FETCompressor::SetAttackAuto(const bool enable) {
 }
 
 void FETCompressor::SetRelease(const float value) {
-    release_raw_ = value;
-    release1_ = exp(value * 5.991465f - 5.298317f);
-    release2_ = calculate_time_coeff(sampling_rate_, value, 5.991465f, -5.298317f);
+    release_seconds_ = value;
+    release1_ = value;
+    release2_ = calculate_time_coeff(sampling_rate_, release1_);
 }
 
 void FETCompressor::SetReleaseAuto(const bool enable) {
@@ -117,27 +114,27 @@ void FETCompressor::SetReleaseAuto(const bool enable) {
 }
 
 void FETCompressor::SetKneeMulti(const float value) {
-    knee_multi_ = value * 4.0f;
+    knee_multi_ = value;
 }
 
 void FETCompressor::SetMaxAttack(const float value) {
-    max_attack_ = exp(value * 7.600903f - 9.21034f);
+    max_attack_ = value;
 }
 
 void FETCompressor::SetMaxRelease(const float value) {
-    max_release_ = exp(value * 5.991465f - 5.298317f);
+    max_release_ = value;
 }
 
 void FETCompressor::SetCrest(const float value) {
-    crest_raw_ = value;
-    crest1_ = exp(value * 5.991465f - 5.298317f);
-    crest2_ = calculate_time_coeff(sampling_rate_, value, 5.991465f, -5.298317f);
+    crest_seconds_ = value;
+    crest1_ = value;
+    crest2_ = calculate_time_coeff(sampling_rate_, crest1_);
 }
 
 void FETCompressor::SetAdapt(const float value) {
-    adapt_raw_ = value;
-    adapt1_ = exp(value * 1.386294f);
-    adapt2_ = calculate_time_coeff(sampling_rate_, value, 1.386294f, 0.0f);
+    adapt_seconds_ = value;
+    adapt1_ = value;
+    adapt2_ = calculate_time_coeff(sampling_rate_, adapt1_);
 }
 
 void FETCompressor::SetNoClip(const bool enable) {
@@ -146,10 +143,10 @@ void FETCompressor::SetNoClip(const bool enable) {
 
 void FETCompressor::SetSamplingRate(const uint32_t sampling_rate) {
     sampling_rate_ = sampling_rate;
-    SetAttack(attack_raw_);
-    SetRelease(release_raw_);
-    SetCrest(crest_raw_);
-    SetAdapt(adapt_raw_);
+    SetAttack(attack_seconds_);
+    SetRelease(release_seconds_);
+    SetCrest(crest_seconds_);
+    SetAdapt(adapt_seconds_);
     Reset();
 }
 
