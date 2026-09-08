@@ -1062,78 +1062,30 @@ void ViPER::ResetBuffers() {
 }
 
 void ViPER::ApplyParams(const viper::ViPERParams &params) {
-    if (!(params.master_limiter == last_applied_.master_limiter)) {
-        ApplyMasterLimiter(params.master_limiter);
-    }
-    if (!(params.playback_gain_control == last_applied_.playback_gain_control)) {
-        ApplyPlaybackGainControl(params.playback_gain_control);
-    }
-    if (!(params.lufs == last_applied_.lufs)) {
-        ApplyLufs(params.lufs);
-    }
-    if (!(params.fet_compressor == last_applied_.fet_compressor)) {
-        ApplyFetCompressor(params.fet_compressor);
-    }
-    if (!(params.bass == last_applied_.bass)) {
-        ApplyBass(params.bass);
-    }
-    if (!(params.bass_mono == last_applied_.bass_mono)) {
-        ApplyBassMono(params.bass_mono);
-    }
-    if (!(params.psychoacoustic_bass == last_applied_.psychoacoustic_bass)) {
-        ApplyPsychoacousticBass(params.psychoacoustic_bass);
-    }
-    if (!(params.spectrum_extension == last_applied_.spectrum_extension)) {
-        ApplySpectrumExtension(params.spectrum_extension);
-    }
-    if (!(params.equalizer == last_applied_.equalizer)) {
-        ApplyEqualizer(params.equalizer);
-    }
-    if (!(params.convolver == last_applied_.convolver)) {
-        ApplyConvolver(params.convolver);
-    }
-    if (!(params.ddc == last_applied_.ddc)) {
-        ApplyDdc(params.ddc);
-    }
-    if (!(params.field_surround == last_applied_.field_surround)) {
-        ApplyFieldSurround(params.field_surround);
-    }
-    if (!(params.diff_surround == last_applied_.diff_surround)) {
-        ApplyDiffSurround(params.diff_surround);
-    }
-    if (!(params.stereo_imager == last_applied_.stereo_imager)) {
-        ApplyStereoImager(params.stereo_imager);
-    }
-    if (!(params.headphone_surround == last_applied_.headphone_surround)) {
-        ApplyHeadphoneSurround(params.headphone_surround);
-    }
-    if (!(params.reverb == last_applied_.reverb)) {
-        ApplyReverb(params.reverb);
-    }
-    if (!(params.dynamic_system == last_applied_.dynamic_system)) {
-        ApplyDynamicSystem(params.dynamic_system);
-    }
-    if (!(params.clarity == last_applied_.clarity)) {
-        ApplyClarity(params.clarity);
-    }
-    if (!(params.cure == last_applied_.cure)) {
-        ApplyCure(params.cure);
-    }
-    if (!(params.tube_simulator == last_applied_.tube_simulator)) {
-        ApplyTubeSimulator(params.tube_simulator);
-    }
-    if (!(params.analog_x == last_applied_.analog_x)) {
-        ApplyAnalogX(params.analog_x);
-    }
-    if (!(params.speaker_correction == last_applied_.speaker_correction)) {
-        ApplySpeakerCorrection(params.speaker_correction);
-    }
-    if (!(params.multiband_compressor == last_applied_.multiband_compressor)) {
-        ApplyMultibandCompressor(params.multiband_compressor);
-    }
-    if (!(params.dynamic_eq == last_applied_.dynamic_eq)) {
-        ApplyDynamicEq(params.dynamic_eq);
-    }
+    ApplyMasterLimiter(params.master_limiter);
+    ApplyPlaybackGainControl(params.playback_gain_control);
+    ApplyLufs(params.lufs);
+    ApplyFetCompressor(params.fet_compressor);
+    ApplyBass(params.bass);
+    ApplyBassMono(params.bass_mono);
+    ApplyPsychoacousticBass(params.psychoacoustic_bass);
+    ApplySpectrumExtension(params.spectrum_extension);
+    ApplyEqualizer(params.equalizer);
+    ApplyConvolver(params.convolver);
+    ApplyDdc(params.ddc);
+    ApplyFieldSurround(params.field_surround);
+    ApplyDiffSurround(params.diff_surround);
+    ApplyStereoImager(params.stereo_imager);
+    ApplyHeadphoneSurround(params.headphone_surround);
+    ApplyReverb(params.reverb);
+    ApplyDynamicSystem(params.dynamic_system);
+    ApplyClarity(params.clarity);
+    ApplyCure(params.cure);
+    ApplyTubeSimulator(params.tube_simulator);
+    ApplyAnalogX(params.analog_x);
+    ApplySpeakerCorrection(params.speaker_correction);
+    ApplyMultibandCompressor(params.multiband_compressor);
+    ApplyDynamicEq(params.dynamic_eq);
 }
 
 void ViPER::ApplyMasterLimiter(const viper::MasterLimiterParams &p) {
