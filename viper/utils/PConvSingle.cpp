@@ -58,7 +58,9 @@ void PConvSingle::Convolve(float *buffer, const uint32_t n) {
     ConvSegment(buffer, false, 0, n);
 }
 
-void PConvSingle::ConvolveInterleaved(float *buffer, const int channel, const uint32_t n) {
+void PConvSingle::ConvolveInterleaved(
+    float *buffer, const int channel, const uint32_t n
+) {
     ConvSegment(buffer, true, channel, n);
 }
 
@@ -83,8 +85,7 @@ void PConvSingle::ConvChunk(
     float *buffer, const bool interleaved, const int channel, const uint32_t n
 ) {
     for (uint32_t i = 0; i < n; i++) {
-        mono_buffer_[input_fill_ + i] =
-            interleaved ? buffer[i * 2 + channel] : buffer[i];
+        mono_buffer_[input_fill_ + i] = interleaved ? buffer[i * 2 + channel] : buffer[i];
     }
 
     // Overlap-save with per-call emission. Forward transform lands in the current
@@ -93,9 +94,7 @@ void PConvSingle::ConvChunk(
     const uint32_t filled = input_fill_ + n;
     memcpy(fft_buffer_ + segment_size_, mono_buffer_, filled * sizeof(float));
     memset(
-        fft_buffer_ + segment_size_ + filled,
-        0,
-        (segment_size_ - filled) * sizeof(float)
+        fft_buffer_ + segment_size_ + filled, 0, (segment_size_ - filled) * sizeof(float)
     );
 
     pffft_transform(

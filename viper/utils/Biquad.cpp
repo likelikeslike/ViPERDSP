@@ -80,11 +80,9 @@ void Biquad::SetHighPassParameter(
     const double a0 = A + 1.0 - (A - 1.0) * cos_omega + sqrt_a * 2.0 * z;
     const double a1 = (A - 1.0 - (A + 1.0) * cos_omega) * 2.0;
     const double a2 = A + 1.0 - (A - 1.0) * cos_omega - sqrt_a * 2.0 * z;
-    const double b0 =
-        (A + 1.0 + (A - 1.0) * cos_omega + sqrt_a * 2.0 * z) * A * omega;
+    const double b0 = (A + 1.0 + (A - 1.0) * cos_omega + sqrt_a * 2.0 * z) * A * omega;
     const double b1 = A * -2.0 * (A - 1.0 + (A + 1.0) * cos_omega) * omega;
-    const double b2 =
-        (A + 1.0 + (A - 1.0) * cos_omega - sqrt_a * 2.0 * z) * A * omega;
+    const double b2 = (A + 1.0 + (A - 1.0) * cos_omega - sqrt_a * 2.0 * z) * A * omega;
 
     SetCoeffs(a0, a1, a2, b0, b1, b2);
 }

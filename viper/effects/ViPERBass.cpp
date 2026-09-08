@@ -138,9 +138,9 @@ void ViPERBass::Reset() {
     smoothing_coeff_ =
         1.0f - std::exp(-1.0f / (0.030f * static_cast<float>(sampling_rate_)));
     bass_factor_smoothed_ = bass_factor_;
-    dc_block_coeff_ =
-        std::exp(-2.0f * static_cast<float>(M_PI) * 18.0f
-                 / static_cast<float>(sampling_rate_));
+    dc_block_coeff_ = std::exp(
+        -2.0f * static_cast<float>(M_PI) * 18.0f / static_cast<float>(sampling_rate_)
+    );
     dc_x1_[0] = dc_x1_[1] = 0.0f;
     dc_y1_[0] = dc_y1_[1] = 0.0f;
 }
