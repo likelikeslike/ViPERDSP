@@ -254,6 +254,16 @@ bool ViPER::DispatchParamValue(const int param, const viper::ParamValue &value) 
             break;
         }
 
+        case kParamSetFullParams: {
+            if (!require_bytes() || value.byte_count != sizeof(viper::ViPERParams)) {
+                return false;
+            }
+            viper::ViPERParams params;
+            std::memcpy(&params, value.bytes, sizeof(params));
+            ApplyParams(params);
+            break;
+        }
+
         // Master Limiter
         case kParamMasterLimiterThreshold: {
             if (!require_float()) return false;

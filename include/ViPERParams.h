@@ -15,6 +15,7 @@
 namespace viper::params {
 
 constexpr int kParamResetAllEffects = 0x10101;
+constexpr int kParamSetFullParams = 0x10102;
 
 constexpr int kParamMasterLimiterThreshold = 0x10110;
 constexpr int kParamMasterLimiterOutputVolume = 0x10111;
