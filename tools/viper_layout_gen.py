@@ -45,8 +45,8 @@ import dataclasses
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Callable, Iterable
 
 import clang.cindex
 from clang.cindex import Cursor, CursorKind
@@ -96,6 +96,10 @@ class LangConfig:
     close_block: str  # block-close line
     array_suffix: str  # `Len` / `_LEN`
     name_case: Callable[[str], str]  # casing for C++-derived const names.
+    indent: str
+
+    def at(self, level: int, text: str) -> str:
+        return f"{self.indent * level}{text}"
 
 
 def discover_stdlib_includes(compiler: str) -> list[str]:
@@ -166,7 +170,7 @@ def parse_header(
 
 
 def strip_params_suffix(name: str) -> str:
-    return name[: -len("Params")] if name.endswith("Params") else name
+    return name.removesuffix("Params")
 
 
 def strip_namespace(s: str) -> str:
@@ -275,7 +279,12 @@ def parse_probe_output(out: str) -> dict[str, dict]:
     return layout
 
 
-def make_kotlin_config(generator_path: str, package: str) -> LangConfig:
+def make_kotlin_config(
+    generator_path: str,
+    package: str,
+    indent_size: int,
+) -> LangConfig:
+    indent = " " * indent_size
     return LangConfig(
         name="kotlin",
         style="nested",
@@ -284,23 +293,25 @@ def make_kotlin_config(generator_path: str, package: str) -> LangConfig:
             "// DO NOT EDIT MANUALLY. Regenerate this file after\n"
             "// any change to `ViPERDSP/include/ViPERParams.h`.\n"
             "//\n"
-            "// Mirrors viper::ViPERParams byte layout for the shm producer in\n"
-            "// ConfigChannel.kt. Field offsets are derived from the same C++\n"
+            "// Mirrors viper::ViPERParams byte layout sent through typed\n"
+            "// parameter dispatch. Field offsets are derived from the same C++\n"
             "// header the AIDL HAL consumer compiles against — Kotlin and C++\n"
             "// cannot disagree on struct shape.\n"
             f"package {package}\n"
         ),
         open_root="object ViperParamsLayout {",
-        open_substruct="    object {layout_name} {{",
-        decl_root="    const val {name}: Int = {value}",
-        decl_substruct="        const val {name}: Int = {value}",
-        close_block="    }",
+        open_substruct=f"{indent}object {{layout_name}} {{{{",
+        decl_root=f"{indent}const val {{name}}: Int = {{value}}",
+        decl_substruct=f"{indent * 2}const val {{name}}: Int = {{value}}",
+        close_block=f"{indent}}}",
         array_suffix="_LEN",
         name_case=to_screaming_snake,
+        indent=indent,
     )
 
 
-def make_swift_config(generator_path: str) -> LangConfig:
+def make_swift_config(generator_path: str, indent_size: int) -> LangConfig:
+    indent = " " * indent_size
     return LangConfig(
         name="swift",
         style="nested",
@@ -309,23 +320,25 @@ def make_swift_config(generator_path: str) -> LangConfig:
             "// DO NOT EDIT BY HAND. Regenerate by running `make layout` after\n"
             "// any change to ViPERDSP/include/ViPERParams.h.\n"
             "//\n"
-            "// Mirrors viper::ViPERParams byte layout for the shm producer in\n"
-            "// ConfigChannel.kt. Field offsets are derived from the same C++\n"
-            "// header the AIDL HAL consumer compiles against — Kotlin and C++\n"
-            "// cannot disagree on struct shape.\n"
+            "// Mirrors viper::ViPERParams byte layout for the typed-params\n"
+            "// marshaler in ViPER4Mac. Field offsets are derived from the same C++\n"
+            "// header the bridge compiles against — Swift and C++ cannot disagree\n"
+            "// on struct shape.\n"
             "import Foundation\n"
         ),
         open_root="enum ViperParamsLayout {",
-        open_substruct="    enum {layout_name} {{",
-        decl_root="    static let {name}: Int = {value}",
-        decl_substruct="        static let {name}: Int = {value}",
-        close_block="    }",
+        open_substruct=f"{indent}enum {{layout_name}} {{{{",
+        decl_root=f"{indent}static let {{name}}: Int = {{value}}",
+        decl_substruct=f"{indent * 2}static let {{name}}: Int = {{value}}",
+        close_block=f"{indent}}}",
         array_suffix="Len",
         name_case=_to_camel,
+        indent=indent,
     )
 
 
-def make_dart_config(generator_path: str) -> LangConfig:
+def make_dart_config(generator_path: str, indent_size: int) -> LangConfig:
+    indent = " " * indent_size
     return LangConfig(
         name="dart",
         style="flat_classes",
@@ -334,19 +347,20 @@ def make_dart_config(generator_path: str) -> LangConfig:
             "// DO NOT EDIT BY HAND. Regenerate by running `make layout` after\n"
             "// any change to ViPERDSP/include/ViPERParams.h.\n"
             "//\n"
-            "// Mirrors viper::ViPERParams byte layout for the shm producer in\n"
-            "// ConfigChannel.kt. Field offsets are derived from the same C++\n"
-            "// header the AIDL HAL consumer compiles against — Kotlin and C++\n"
+            "// Mirrors viper::ViPERParams byte layout for the shm producer\n"
+            "// in ViPER4Windows's Flutter UI. Field offsets are derived from\n"
+            "// the same C++ header the APO compiles against — Dart and C++\n"
             "// cannot disagree on struct shape.\n"
             "// ignore_for_file: constant_identifier_names\n"
         ),
         open_root="abstract final class ViperParamsLayout {",
         open_substruct="abstract final class {layout_name}Layout {{",
-        decl_root="  static const int {name} = {value};",
-        decl_substruct="  static const int {name} = {value};",
+        decl_root=f"{indent}static const int {{name}} = {{value}};",
+        decl_substruct=f"{indent}static const int {{name}} = {{value}};",
         close_block="}",
         array_suffix="Len",
         name_case=_to_camel,
+        indent=indent,
     )
 
 
@@ -370,11 +384,7 @@ def emit(
 
     root = structs["ViPERParams"]
     root_layout = layout["ViPERParams"]
-    lines.append(
-        "  // Root struct: viper::ViPERParams"
-        if cfg.style == "flat_classes"
-        else "    // Root struct: viper::ViPERParams"
-    )
+    lines.append(cfg.at(1, "// Root struct: viper::ViPERParams"))
     lines.append(cfg.decl_root.format(name="SIZE", value=root_layout["SIZE"]))
     for f in root.fields:
         offset = root_layout["fields"][f.name]
@@ -447,7 +457,11 @@ def _to_camel(name: str) -> str:
     return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
 
-def main():
+def default_indent_size(lang: str) -> int:
+    return 4 if lang == "kotlin" else 2
+
+
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--header", required=True, type=Path)
     parser.add_argument("--include_dir", action="append", required=True, type=Path)
@@ -471,6 +485,12 @@ def main():
         "--struct_filter",
         default=None,
         help="If set, only emit structs whose name matches this substring (spike mode)",
+    )
+    parser.add_argument(
+        "--indent",
+        type=int,
+        default=None,
+        help="Spaces per indentation level. Defaults to 2 for Swift/Dart, 4 for Kotlin.",
     )
     args = parser.parse_args()
 
@@ -505,14 +525,20 @@ def main():
     )
 
     gen_path = args.generator_path or "ViPERDSP/tools/viper_layout_gen.py"
+    indent_size = (
+        args.indent if args.indent is not None else default_indent_size(args.lang)
+    )
+    if indent_size < 0:
+        raise SystemExit("--indent must be zero or greater")
+
     if args.lang == "kotlin":
         if not args.package:
             raise SystemExit("--package is required for --lang=kotlin")
-        cfg = make_kotlin_config(gen_path, args.package)
+        cfg = make_kotlin_config(gen_path, args.package, indent_size)
     elif args.lang == "swift":
-        cfg = make_swift_config(gen_path)
+        cfg = make_swift_config(gen_path, indent_size)
     elif args.lang == "dart":
-        cfg = make_dart_config(gen_path)
+        cfg = make_dart_config(gen_path, indent_size)
     else:
         raise SystemExit(f"lang {args.lang} not supported")
 
