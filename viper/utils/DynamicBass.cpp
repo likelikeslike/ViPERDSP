@@ -1,5 +1,6 @@
 #include "DynamicBass.h"
 #include "../constants.h"
+#include <algorithm>
 
 DynamicBass::DynamicBass() :
     low_freq_x_(120),
@@ -51,13 +52,11 @@ void DynamicBass::Reset() {
 }
 
 void DynamicBass::SetBassGain(const float value) {
-    bass_gain_ = value;
+    // value: normalized strength, 0..1
+    const float strength = std::clamp(value, 0.0f, 1.0f);
 
-    double x = (value - 1.0) / 20.0 * 1600.0;
-    if (x > 1600.0) {
-        x = 1600.0;
-    }
-    q_peak_ = static_cast<float>(x);
+    bass_gain_ = 1.0f + strength * 20.0f;
+    q_peak_ = strength * 1600.0f;
 
     low_pass_.SetLowPassParameter(55.0f, sampling_rate_, q_peak_ / 666.0f + 0.5f);
 }

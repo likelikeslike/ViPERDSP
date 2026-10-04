@@ -434,7 +434,7 @@ struct DynamicSystemParams {
     int y_coeff_high = 0;        // 0..300
     float side_gain_low = 0.0f;  // 0..1
     float side_gain_high = 0.0f; // 0..1
-    float strength = 0.0f;       // linear bass gain, 1..8       // 0..1
+    float strength = 0.0f;       // normalized strength, 0..1
 
     bool operator==(const DynamicSystemParams &other) const {
         if (!enable && !other.enable) return true;
