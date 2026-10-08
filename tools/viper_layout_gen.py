@@ -128,7 +128,7 @@ def parse_header(
     include_dirs: list[Path],
     compiler: str,
 ) -> dict[str, StructDef]:
-    """Parse `header`, return all structs in the `viper` namespace."""
+    """Parse `header`, return `ViPERParams` and its `*Params` types."""
     index = clang.cindex.Index.create()
     args = ["-std=c++17", "-x", "c++"]
     for inc in include_dirs:
@@ -157,7 +157,7 @@ def parse_header(
                 visit(c, False)
             return
         if cursor.kind in (CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL):
-            if cursor.is_definition() and cursor.spelling:
+            if cursor.is_definition() and cursor.spelling.endswith("Params"):
                 fields = list(extract_fields(cursor))
                 structs[cursor.spelling] = StructDef(
                     cpp_name=cursor.spelling,
