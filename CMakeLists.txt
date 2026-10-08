@@ -47,6 +47,7 @@ set(VIPERDSP_SOURCES
     viper/utils/DepthSurround.cpp
     viper/utils/DynamicBass.cpp
     viper/utils/FIR.cpp
+    viper/utils/QuadricTube.cpp
     viper/utils/Harmonic.cpp
     viper/utils/HiFi.cpp
     viper/utils/HighShelf.cpp

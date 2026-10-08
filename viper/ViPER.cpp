@@ -110,6 +110,9 @@ ViPER::ViPER() :
 
     tube_simulator_.SetEnable(false);
     tube_simulator_.SetSamplingRate(sampling_rate_);
+    tube_simulator_.SetTubeType(0);
+    tube_simulator_.SetDrive(0.5f);
+    tube_simulator_.SetMix(0.3f);
     tube_simulator_.Reset();
 
     analog_x_.SetEnable(false);
@@ -916,6 +919,24 @@ bool ViPER::DispatchParamValue(const int param, const viper::ParamValue &value) 
             tube_simulator_.SetEnable(value.bool_value);
             break;
         }
+        case kParamTubeSimulatorModel: {
+            if (!require_int()) return false;
+            VIPER_LOGD("TubeSim: model=%d", value.int_value);
+            tube_simulator_.SetTubeType(value.int_value);
+            break;
+        }
+        case kParamTubeSimulatorDrive: {
+            if (!require_float()) return false;
+            VIPER_LOGD("TubeSim: drive=%.2f", value.float_value);
+            tube_simulator_.SetDrive(value.float_value);
+            break;
+        }
+        case kParamTubeSimulatorMix: {
+            if (!require_float()) return false;
+            VIPER_LOGD("TubeSim: mix=%.2f", value.float_value);
+            tube_simulator_.SetMix(value.float_value);
+            break;
+        }
 
         // AnalogX
         case kParamAnalogXEnable: {
@@ -1419,6 +1440,9 @@ void ViPER::ApplyCure(const viper::CureParams &p) {
 }
 
 void ViPER::ApplyTubeSimulator(const viper::TubeSimulatorParams &p) {
+    tube_simulator_.SetTubeType(p.model);
+    tube_simulator_.SetDrive(p.drive);
+    tube_simulator_.SetMix(p.mix);
     tube_simulator_.SetEnable(p.enable);
     last_applied_.tube_simulator = p;
 }
