@@ -1,6 +1,8 @@
 #include "PsychoacousticBass.h"
 #include "../constants.h"
 
+#include <cmath>
+
 static constexpr float kHarmonicOrder2[10] = {
     0.0f,
     1.0f,
@@ -71,8 +73,8 @@ void PsychoacousticBass::Process(float *samples, const uint32_t size) {
         const double bass_l = lowpass_[0].ProcessSample(samples[i]);
         const double bass_r = lowpass_[1].ProcessSample(samples[i + 1]);
 
-        double abs_l = fabs(bass_l);
-        double abs_r = fabs(bass_r);
+        double abs_l = std::fabs(bass_l);
+        double abs_r = std::fabs(bass_r);
         const double peak = abs_l > abs_r ? abs_l : abs_r;
         if (peak > envelope_) {
             envelope_ += 0.01 * (peak - envelope_);
