@@ -1,5 +1,7 @@
 #include "FIR.h"
 
+#include <cstring>
+
 FIR::FIR() :
     has_coefficients_(false),
     coeffs_size_(0),

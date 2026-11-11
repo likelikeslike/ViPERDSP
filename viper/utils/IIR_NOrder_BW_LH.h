@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "IIR_1st.h"
 #include <vector>
 

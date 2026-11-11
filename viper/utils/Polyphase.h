@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "FIR.h"
 #include "WaveBuffer.h"
 

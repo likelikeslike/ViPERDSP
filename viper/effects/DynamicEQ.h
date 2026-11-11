@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "../utils/MultiBiquad.h"
 #include <array>
 

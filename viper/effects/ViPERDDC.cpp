@@ -2,6 +2,8 @@
 #include "../../include/log.h"
 #include "../constants.h"
 
+#include <cstring>
+
 ViPERDDC::ViPERDDC() :
     enable_(false),
     set_coeffs_ok_(false),

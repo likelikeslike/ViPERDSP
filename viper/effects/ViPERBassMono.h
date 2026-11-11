@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "../utils/Biquad.h"
 #include "../utils/Polyphase.h"
 #include "../utils/Subwoofer.h"

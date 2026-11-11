@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "../utils/Crossfeed.h"
 #include "../utils/PassFilter.h"
 

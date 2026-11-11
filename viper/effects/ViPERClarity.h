@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "../utils/HiFi.h"
 #include "../utils/HighShelf.h"
 #include "../utils/NoiseSharpening.h"

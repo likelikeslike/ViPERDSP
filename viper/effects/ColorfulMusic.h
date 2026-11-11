@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "../utils/DepthSurround.h"
 #include "../utils/Stereo3DSurround.h"
 
