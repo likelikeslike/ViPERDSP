@@ -5,6 +5,9 @@
 #include "utils/Crc32.h"
 #include <type_traits>
 
+#include <cstring>
+#include <type_traits>
+
 using namespace viper::params;
 
 template <typename T>
