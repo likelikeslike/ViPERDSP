@@ -79,3 +79,14 @@ target_compile_options(ViPERDSP PRIVATE -O3 -flto)
 if (ANDROID)
     target_link_libraries(ViPERDSP log)
 endif ()
+
+include(CTest)
+
+if (BUILD_TESTING)
+    add_executable(viperdsp_test test/dsp_test.cpp)
+    target_link_libraries(viperdsp_test PRIVATE ViPERDSP)
+
+    foreach(test_name IN ITEMS engine_blocks engine_reset limiter tube bass)
+        add_test(NAME ${test_name} COMMAND viperdsp_test ${test_name})
+    endforeach()
+endif ()
