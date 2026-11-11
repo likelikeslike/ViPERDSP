@@ -86,7 +86,38 @@ if (BUILD_TESTING)
     add_executable(viperdsp_test test/dsp_test.cpp)
     target_link_libraries(viperdsp_test PRIVATE ViPERDSP)
 
+    add_executable(viperdsp_effects_test test/effects_test.cpp)
+    target_link_libraries(viperdsp_effects_test PRIVATE ViPERDSP)
+
+    add_executable(viperdsp_utils_test test/utils_test.cpp)
+    target_link_libraries(viperdsp_utils_test PRIVATE ViPERDSP)
+
     foreach(test_name IN ITEMS engine_blocks engine_reset limiter tube bass)
         add_test(NAME ${test_name} COMMAND viperdsp_test ${test_name})
+    endforeach()
+
+    file(GLOB effect_sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        CONFIGURE_DEPENDS "viper/effects/*.cpp")
+    file(GLOB util_sources RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+        CONFIGURE_DEPENDS "viper/utils/*.cpp")
+    foreach(source IN LISTS effect_sources util_sources)
+        if (NOT source IN_LIST VIPERDSP_SOURCES)
+            message(FATAL_ERROR "DSP source missing from library: ${source}")
+        endif ()
+    endforeach()
+
+    file(GLOB effect_headers CONFIGURE_DEPENDS "viper/effects/*.h")
+    foreach(header IN LISTS effect_headers)
+        get_filename_component(effect_name ${header} NAME_WE)
+        if (NOT effect_name MATCHES "^VHE_L[0-9]+$")
+            add_test(NAME effect_${effect_name}
+                COMMAND viperdsp_effects_test ${effect_name})
+        endif ()
+    endforeach()
+
+    file(GLOB util_headers CONFIGURE_DEPENDS "viper/utils/*.h")
+    foreach(header IN LISTS util_headers)
+        get_filename_component(util_name ${header} NAME_WE)
+        add_test(NAME util_${util_name} COMMAND viperdsp_utils_test ${util_name})
     endforeach()
 endif ()
