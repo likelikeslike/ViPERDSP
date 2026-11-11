@@ -7,7 +7,6 @@
 #include "viper/utils/Crossfeed.h"
 #include "viper/utils/DepthSurround.h"
 #include "viper/utils/DynamicBass.h"
-#include "viper/utils/DynamicTube.h"
 #include "viper/utils/FIR.h"
 #include "viper/utils/Harmonic.h"
 #include "viper/utils/HiFi.h"
@@ -304,10 +303,6 @@ void Run(const std::string &name) {
         CheckStereoChange(name, [&](float *data, uint32_t size) {
             filter.FilterSamples(data, size);
         });
-    } else if (name == "DynamicTube") {
-        DynamicTube filter;
-        filter.Configure(48000, 0.75f, 1);
-        CheckMonoChange(name, [&](double x) { return filter.Process(x); });
     } else if (name == "FIR") {
         TestFIR();
     } else if (name == "Harmonic") {
@@ -401,7 +396,7 @@ void Run(const std::string &name) {
         Check(energy > 1e-7 && filter.GetLatency() > 0, "Polyphase lost the impulse");
     } else if (name == "QuadricTube") {
         QuadricTube filter;
-        filter.Configure(1);
+        filter.Configure(1, 0.75);
         CheckMonoChange(name, [&](double x) { return filter.Process(x); });
     } else if (name == "Stereo3DSurround") {
         Stereo3DSurround filter;

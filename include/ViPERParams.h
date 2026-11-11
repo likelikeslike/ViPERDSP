@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
 
 #ifndef VERSION_CODE
 #define VERSION_CODE 00000000

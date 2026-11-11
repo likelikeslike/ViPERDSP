@@ -3,7 +3,6 @@
 #include "../include/log.h"
 #include "constants.h"
 #include "utils/Crc32.h"
-#include <type_traits>
 
 #include <cstring>
 #include <type_traits>

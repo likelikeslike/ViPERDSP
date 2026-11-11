@@ -114,13 +114,13 @@ void TestLimiter() {
 }
 
 std::vector<float> ProcessTube(
-    const std::vector<float> &input, int mode, uint32_t block_size
+    const std::vector<float> &input, int tube_type, uint32_t block_size
 ) {
     TubeSimulator tube;
     tube.SetSamplingRate(48000);
-    tube.SetMode(mode);
-    tube.SetTubeType(1);
-    tube.SetDrive(75);
+    tube.SetTubeType(tube_type);
+    tube.SetDrive(0.75f);
+    tube.SetMix(1.0f);
     tube.SetEnable(true);
     auto output = input;
     const uint32_t frames = static_cast<uint32_t>(output.size() / 2);
@@ -152,9 +152,9 @@ void TestTube() {
         input[i * 2] = static_cast<float>(0.5 * std::sin(2.0 * pi * 100.0 * i / 48000.0));
     }
 
-    for (int mode : {0, 1}) {
-        const auto reference = ProcessTube(input, mode, 512);
-        const auto single_frame = ProcessTube(input, mode, 1);
+    for (int tube_type : {0, 1}) {
+        const auto reference = ProcessTube(input, tube_type, 512);
+        const auto single_frame = ProcessTube(input, tube_type, 1);
         for (size_t i = 0; i < reference.size(); i += 2) {
             Check(
                 std::isfinite(reference[i]) && std::isfinite(reference[i + 1]),

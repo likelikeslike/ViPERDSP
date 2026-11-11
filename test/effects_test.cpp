@@ -223,8 +223,8 @@ void Run(const std::string &name) {
         });
     } else if (name == "TubeSimulator") {
         Exercise<TubeSimulator>(name, [](auto &effect) {
-            effect.SetMode(1);
-            effect.SetDrive(75);
+            effect.SetDrive(0.75f);
+            effect.SetMix(1.0f);
         });
     } else if (name == "VHE") {
         TestVhe();
