@@ -78,9 +78,9 @@ void ViPERBass::Process(float *samples, const uint32_t size) {
                 const uint32_t buffer_offset = wave_buffer_.GetBufferOffset();
 
                 for (uint32_t i = 0; i < size * 2; i += 2) {
-                    buffer[buffer_offset - size + i] =
+                    buffer[(buffer_offset - size) * 2 + i] =
                         static_cast<float>(biquad_[0].ProcessSample(samples[i]));
-                    buffer[buffer_offset - size + i + 1] =
+                    buffer[(buffer_offset - size) * 2 + i + 1] =
                         static_cast<float>(biquad_[1].ProcessSample(samples[i + 1]));
                 }
 
